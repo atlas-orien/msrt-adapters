@@ -1,0 +1,23 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0"
+authors = ["Atlas Orein <gamesworldcraft@gamil.com>"]
+repository = "https://github.com/atlas-orien/srt-adapters"
+readme = "README.md"
+
+[workspace.dependencies]
+srt = { path = "../srt/crates/srt", version = "0.1.0" }
+embedded-io-async = { version = "0.7.0", default-features = false }
+
+[workspace.lints.rust]
+missing_docs = "warn"
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+alloc_instead_of_core = "warn"
+std_instead_of_alloc = "warn"
+std_instead_of_core = "warn"
