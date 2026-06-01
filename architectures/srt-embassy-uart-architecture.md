@@ -1,92 +1,266 @@
-# srt-embassy-uart Architecture (Phase 1)
+# srt-embassy-uart 架构设计（Phase 1）
 
-## Goal
+## 目标
 
-Provide an Embassy-friendly UART adapter for `srt::Engine` with a simple async API:
+`srt-embassy-uart` 是 SRT 协议在 Embassy UART 环境下的适配层。
 
-- `send(message).await`
-- `receive(rx_buf).await`
+它不实现协议本身，也不重新设计可靠传输逻辑。真正的协议状态机仍然由 `srt::Engine` 负责。
 
-The adapter itself is protocol I/O glue and does not duplicate SRT core logic.
+这个 crate 的目标是把 `srt::Engine` 的底层接口组合成 MCU 更容易使用的 UART 驱动接口。
 
-## Scope (Current)
+## 核心结论
 
-- one crate: `crates/srt-embassy-uart`
-- no board-specific HAL bindings
-- no task spawning strategy built-in
-- no buffering allocator requirements
-- boundary based on `embedded-io-async::{Read, Write}`
+可靠传输不能把 `send` 和 `receive` 当成两个互相独立的操作。
 
-## Non-goals (Current)
+即使应用层只想发送 message，协议层也必须持续接收对端返回的 ACK，否则无法知道：
 
-- no DMA policy abstraction
-- no UART interrupt ownership model
-- no zero-copy ring protocol yet
-- no end-to-end hardware timing benchmark in this phase
+- 哪些 packet 已经成功到达
+- 哪些 packet 需要重发
+- 什么时候可以释放发送状态
+- 什么时候应该上报发送失败
 
-## Core Design
+因此 `srt-embassy-uart` 的核心不是 `send().await` 或 `receive().await`，而是一个持续推进协议状态的 `poll_once`。
 
-`UartDriver<Uart>` owns:
+## 设计原则
+
+Phase 1 使用显式 `poll_once` 模型。
+
+原因：
+
+- 适合 MCU 主循环
+- 不隐藏任务调度
+- 不强依赖 Embassy executor 的 channel / mutex / static storage 策略
+- 更容易移植到 RTIC、裸 loop、自研 scheduler 或其他 no-std runtime
+- 保持 SRT Engine 的真实执行过程可见，方便调试可靠传输
+
+未来可以在 `poll_once` 之上再包装 `run().await` / handle API，但 `poll_once` 应该是最底层、最稳定的能力。
+
+## 边界
+
+`srt-embassy-uart` 负责：
+
+- 持有 UART 对象
+- 持有 `srt::Engine`
+- 从 UART 读取 bytes
+- 把 bytes 交给 `engine.receive`
+- 把当前时间交给 `engine.tick`
+- 调用 `engine.poll_event`
+- 遇到 `Event::Write` 时写回 UART
+- 遇到 `Event::Message` 时缓存完整 message
+- 遇到 `Event::SendFailed` 时缓存或返回发送失败状态
+- 把 UART 错误和 SRT 错误统一映射成 adapter error
+
+`srt-embassy-uart` 不负责：
+
+- 定义 SRT wire format
+- 定义可靠传输算法
+- 分配 message id
+- 处理 packet ack/retransmit 细节
+- 绑定某一个具体 MCU HAL
+- 内置 Embassy task spawning 策略
+- 内置 DMA / interrupt / ring buffer 策略
+
+## 核心对象
+
+`UartDriver<Uart>` 拥有：
 
 - `uart: Uart`
 - `engine: srt::Engine`
-- `pending_message: Option<srt::Message>`
+- 接收完成的 message 缓存
+- 发送失败状态缓存
 
-Design principle:
+`UartDriver` 是一个单所有权对象。
 
-1. Application submits outgoing message once via `send`.
-2. Adapter queues into `engine.send`.
-3. Adapter drains engine events and writes all `Event::Write` bytes to UART.
-4. Adapter stores `Event::Message` as pending and returns it from `receive`.
-5. Adapter maps protocol and UART failures into one adapter error type.
+Phase 1 不引入共享 handle，不引入内部锁，也不引入后台 task。用户可以把它放进自己的主循环、Embassy task、RTIC task 或其他调度模型中。
 
-## Public API
+## Public API 草案
 
-- `UartDriver::new(uart, engine) -> Self`
-- `UartDriver::send(&mut self, message: &[u8]) -> async Result<MessageId, UartDriverError<_>>`
-- `UartDriver::receive(&mut self, rx_buf: &mut [u8]) -> async Result<Message, UartDriverError<_>>`
-- `UartDriver::tick(&mut self, now_ms: u64) -> async Result<(), UartDriverError<_>>`
+Phase 1 推荐的核心 API：
 
-## Error Model
+```rust
+impl<Uart> UartDriver<Uart> {
+    pub const fn new(uart: Uart, engine: srt::Engine) -> Self;
 
-`UartDriverError<UartError>`:
+    pub fn send_message(&mut self, message: &[u8]) -> Result<srt::core::MessageId>;
 
-- `Uart(UartError)` for lower-link I/O failures
-- `Protocol(srt::core::Error)` for engine failures (send/receive invariants)
-- `SendFailed(srt::SendFailed)` for reliable delivery retry-limit failures
+    pub async fn poll_once(&mut self, now_ms: u64, rx_buf: &mut [u8]) -> Result<()>;
 
-## Runtime Behavior
+    pub fn poll_message(&mut self) -> Option<srt::Message>;
 
-### send
+    pub fn poll_send_failed(&mut self) -> Option<srt::SendFailed>;
+}
+```
 
-- non-blocking protocol path: `engine.send(message)` returns immediately
-- async I/O path: function awaits while writing generated wire packets to UART
+其中：
 
-### receive
+- `send_message` 只表示提交一条待发送 message
+- `poll_once` 才是真正推进协议状态的函数
+- `poll_message` 用来取出已经完整接收的 message
+- `poll_send_failed` 用来取出可靠发送失败事件
 
-- loops on UART `read` chunks
-- feeds bytes to `engine.receive`
-- drains generated writes (ACK/retransmit responses)
-- returns exactly one complete SRT `Message` when available
+## send_message 语义
 
-### tick
+`send_message` 不是“同步发送完成”。
 
-- bridges external timer into `engine.tick(now_ms)`
-- flushes retransmit writes emitted by engine
+它只是把应用层 message 提交给 `srt::Engine`：
 
-## Integration Pattern (Embassy)
+```text
+application message
+    -> send_message
+    -> engine.send
+    -> engine 内部生成待发送 packet 状态
+```
 
-Typical app model:
+真正把 packet 写入 UART、等待 ACK、触发重发、确认完成，都发生在后续的 `poll_once` 中。
 
-- one async task drives `receive`
-- app sends with `send` from same ownership context (or guarded by a mutex)
-- periodic timer calls `tick` to drive retransmit timeout
+因此：
 
-Phase 1 keeps ownership single-threaded by design and avoids internal locking.
+- `send_message` 不等待 ACK
+- `send_message` 不保证对端已经收到 message
+- `send_message` 不直接读 UART
+- `send_message` 不直接完成可靠传输
 
-## Next Steps
+这个设计可以避免在 no-std MCU 里隐藏阻塞行为。
 
-- add optional split API for rx/tx task separation
-- add board example (e.g., stm32 or rp) with Embassy UART
-- add loopback integration test with mock `embedded-io-async` transport
-- define backpressure strategy for high-throughput links
+## poll_once 语义
+
+`poll_once` 是 adapter 的核心。
+
+每次调用时，它执行一次有限的协议推进：
+
+```text
+1. 尝试从 UART 读取一段 bytes
+2. 如果读到 bytes，则调用 engine.receive(bytes)
+3. 调用 engine.tick(now_ms)
+4. 循环调用 engine.poll_event()
+5. 如果事件是 Event::Write，则写入 UART
+6. 如果事件是 Event::Message，则缓存 message
+7. 如果事件是 Event::SendFailed，则缓存失败状态
+```
+
+`poll_once` 不应该成为无限循环。
+
+无限循环应该由用户或未来的高级包装层决定：
+
+```rust
+loop {
+    driver.poll_once(now_ms(), &mut rx_buf).await?;
+
+    while let Some(message) = driver.poll_message() {
+        app.handle_message(message);
+    }
+
+    while let Some(failed) = driver.poll_send_failed() {
+        app.handle_send_failed(failed);
+    }
+}
+```
+
+## 为什么不直接使用 run().await
+
+`run().await` 对用户体验更好，但它会引入更多设计问题：
+
+- 是否内部无限循环
+- 如何从其他 task 提交 message
+- 是否需要 channel
+- channel buffer 多大
+- message buffer 谁拥有
+- 是否需要 mutex
+- 是否绑定 Embassy executor
+- 如何处理 backpressure
+
+这些问题不是 SRT 协议本身的问题，而是 runtime 集成问题。
+
+所以 Phase 1 先冻结 `poll_once` 作为最小稳定边界。
+
+未来可以在这个基础上增加：
+
+```rust
+driver.run(callbacks).await
+handle.send_message(message).await
+handle.recv_message().await
+```
+
+但它们应该是上层便利封装，而不是最底层协议驱动能力。
+
+## 使用模型
+
+典型 MCU 使用方式：
+
+```rust
+let mut driver = UartDriver::new(uart, engine);
+let mut rx_buf = [0u8; 128];
+
+driver.send_message(b"hello")?;
+
+loop {
+    driver.poll_once(now_ms(), &mut rx_buf).await?;
+
+    while let Some(message) = driver.poll_message() {
+        app.handle_message(message);
+    }
+
+    while let Some(failed) = driver.poll_send_failed() {
+        app.handle_send_failed(failed);
+    }
+}
+```
+
+这个模型里，应用层只需要理解：
+
+- `send_message`：提交消息
+- `poll_once`：推进协议
+- `poll_message`：取完整消息
+- `poll_send_failed`：取发送失败事件
+
+## 和 srt::Engine 的关系
+
+`srt::Engine` 是协议状态机。
+
+`srt-embassy-uart::UartDriver` 是 I/O adapter。
+
+关系如下：
+
+```text
+Application
+    |
+    | send_message / poll_message
+    v
+UartDriver
+    |
+    | engine.send / engine.receive / engine.tick / engine.poll_event
+    v
+srt::Engine
+    |
+    | Event::Write
+    v
+UART
+```
+
+`UartDriver` 不应该把协议细节泄漏给应用层，但也不应该隐藏 MCU 调度模型。
+
+## 当前非目标
+
+Phase 1 暂不处理：
+
+- Embassy task handle API
+- 多 producer 发送队列
+- rx/tx split ownership
+- DMA buffer 策略
+- interrupt-driven ring buffer
+- 多 message 接收队列
+- 板级示例
+- 硬件性能测试
+
+这些属于后续阶段。
+
+## 下一步
+
+代码需要从当前的 `send().await` / `receive().await` 模型调整为：
+
+- `send_message`
+- `poll_once`
+- `poll_message`
+- `poll_send_failed`
+
+同时删除让用户误解为“send 已经可靠发送完成”的 API 命名。

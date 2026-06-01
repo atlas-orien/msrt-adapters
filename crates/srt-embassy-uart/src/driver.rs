@@ -1,15 +1,12 @@
-use srt::{Engine, Message};
+use srt::{Engine, Message, SendFailed};
 
-/// Drives an SRT engine with an async UART-like byte stream.
-///
-/// The adapter owns both UART and engine state and exposes a `tokio`-like API:
-/// - `send(message).await`
-/// - `receive(rx_buf).await`
+/// Drives SRT engine state over an async UART-like byte stream.
 #[derive(Debug)]
 pub struct UartDriver<Uart> {
     pub(crate) uart: Uart,
     pub(crate) engine: Engine,
     pub(crate) pending_message: Option<Message>,
+    pub(crate) pending_send_failed: Option<SendFailed>,
 }
 
 impl<Uart> UartDriver<Uart> {
@@ -20,6 +17,7 @@ impl<Uart> UartDriver<Uart> {
             uart,
             engine,
             pending_message: None,
+            pending_send_failed: None,
         }
     }
 
@@ -39,5 +37,17 @@ impl<Uart> UartDriver<Uart> {
     #[must_use]
     pub fn into_parts(self) -> (Uart, Engine) {
         (self.uart, self.engine)
+    }
+
+    /// Polls one completed incoming message if available.
+    #[must_use]
+    pub fn poll_message(&mut self) -> Option<Message> {
+        self.pending_message.take()
+    }
+
+    /// Polls one reliable-send failure event if available.
+    #[must_use]
+    pub fn poll_send_failed(&mut self) -> Option<SendFailed> {
+        self.pending_send_failed.take()
     }
 }
