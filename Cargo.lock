@@ -235,6 +235,7 @@ name = "srt-host-tokio"
 version = "0.1.0"
 dependencies = [
  "srt",
+ "srt-adapter-core",
  "tokio",
 ]
 

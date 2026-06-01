@@ -12,6 +12,7 @@ default = []
 
 [dependencies]
 srt = { workspace = true }
+srt-adapter-core = { path = "../srt-adapter-core", version = "0.1.0" }
 tokio = { version = "1", features = ["io-util", "io-std", "net", "time"] }
 
 [dev-dependencies]

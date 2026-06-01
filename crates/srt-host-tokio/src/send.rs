@@ -1,9 +1,11 @@
-use srt::core::MessageId;
-
-use crate::{Error, HostDriver, Result};
+use crate::{HostDriver, Result};
 
 impl<Io> HostDriver<Io> {
-    pub fn send_message(&mut self, message: &[u8]) -> Result<MessageId> {
-        self.engine.send(message).map_err(Error::from)
+    pub fn send_message(&mut self, message: &[u8]) -> Result<()> {
+        self.core.send_message(message)
+    }
+
+    pub fn debug(&mut self, message: &[u8]) -> Result<()> {
+        self.core.debug(message)
     }
 }

@@ -1,6 +1,5 @@
 #![allow(missing_docs)]
 
-use srt::{Config, Engine};
 use srt_host_tokio::HostDriver;
 use tokio::io::duplex;
 
@@ -8,10 +7,10 @@ use tokio::io::duplex;
 async fn main() {
     let (io_a, io_b) = duplex(2048);
 
-    let mut a = HostDriver::new(io_a, Engine::new(Config::default()));
-    let mut b = HostDriver::new(io_b, Engine::new(Config::default()));
+    let mut a = HostDriver::new(io_a);
+    let mut b = HostDriver::new(io_b);
 
-    let _ = a.send_message(b"hello from host-a").expect("send failed");
+    a.send_message(b"hello from host-a").expect("send failed");
 
     let mut rx_a = [0u8; 256];
     let mut rx_b = [0u8; 256];

@@ -2,7 +2,6 @@
 
 use std::time::Duration;
 
-use srt::{Config, Engine};
 use srt_host_tokio::HostDriver;
 use tokio::{
     io::{self, AsyncBufReadExt, BufReader},
@@ -21,7 +20,7 @@ async fn main() {
 
     println!("connected");
 
-    let mut driver = HostDriver::new(stream, Engine::new(Config::default()));
+    let mut driver = HostDriver::new(stream);
     let mut rx_buf = [0u8; 256];
     let mut now_ms: u64 = 0;
 
@@ -40,7 +39,7 @@ async fn main() {
                         }
 
                         match driver.send_message(text.as_bytes()) {
-                            Ok(message_id) => println!("sent message_id={}", message_id.get()),
+                            Ok(()) => println!("sent"),
                             Err(err) => println!("send_message error: {:?}", err.kind()),
                         }
                     }
@@ -72,9 +71,9 @@ async fn main() {
                 while let Some(failed) = driver.poll_send_failed() {
                     println!(
                         "send_failed: channel={} message_id={} reason={:?}",
-                        failed.channel_id.get(),
-                        failed.message_id.get(),
-                        failed.reason,
+                        failed.channel_id(),
+                        failed.message_id(),
+                        failed.reason(),
                     );
                 }
             }

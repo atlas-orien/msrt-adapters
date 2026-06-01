@@ -2,7 +2,6 @@
 
 use std::time::Duration;
 
-use srt::{Config, Engine};
 use srt_host_tokio::HostDriver;
 use tokio::{net::TcpStream, time::sleep};
 
@@ -18,7 +17,7 @@ async fn main() {
 
     println!("connected {addr}");
 
-    let mut driver = HostDriver::new(stream, Engine::new(Config::default()));
+    let mut driver = HostDriver::new(stream);
     let mut rx_buf = [0u8; 256];
 
     driver
@@ -34,7 +33,7 @@ async fn main() {
             if let Ok(text) = core::str::from_utf8(message.as_bytes()) {
                 println!("recv={text}");
             } else {
-                println!("recv bytes len={}", message.len);
+                println!("recv bytes len={}", message.as_bytes().len());
             }
             return;
         }
@@ -42,9 +41,9 @@ async fn main() {
         if let Some(failed) = driver.poll_send_failed() {
             panic!(
                 "send_failed channel={} message_id={} reason={:?}",
-                failed.channel_id.get(),
-                failed.message_id.get(),
-                failed.reason,
+                failed.channel_id(),
+                failed.message_id(),
+                failed.reason(),
             );
         }
 
