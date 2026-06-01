@@ -11,9 +11,7 @@ async fn main() {
         .nth(1)
         .unwrap_or_else(|| "127.0.0.1:5555".to_string());
 
-    let stream = TcpStream::connect(&addr)
-        .await
-        .expect("connect failed");
+    let stream = TcpStream::connect(&addr).await.expect("connect failed");
 
     println!("connected {addr}");
 
@@ -27,7 +25,10 @@ async fn main() {
     let mut now_ms = 0_u64;
     for _ in 0..5000 {
         now_ms = now_ms.wrapping_add(1);
-        driver.poll_once(now_ms, &mut rx_buf).await.expect("poll_once failed");
+        driver
+            .poll_once(now_ms, &mut rx_buf)
+            .await
+            .expect("poll_once failed");
 
         if let Some(message) = driver.poll_message() {
             if let Ok(text) = core::str::from_utf8(message.as_bytes()) {

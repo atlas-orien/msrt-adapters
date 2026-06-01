@@ -1,32 +1,32 @@
-use srt_adapter_core::{AdapterCore, ReceivedMessage, SendFailedEvent};
+use core::ops::{Deref, DerefMut};
+
+use srt_adapter_core::AdapterDriver;
 
 #[derive(Debug)]
-pub struct HostDriver<Io> {
-    pub(crate) io: Io,
-    pub(crate) core: AdapterCore,
-}
+pub struct HostDriver<Io>(AdapterDriver<Io>);
 
 impl<Io> HostDriver<Io> {
     #[must_use]
     pub fn new(io: Io) -> Self {
-        Self {
-            io,
-            core: AdapterCore::new(),
-        }
+        Self(AdapterDriver::new(io))
     }
 
     #[must_use]
     pub fn into_io(self) -> Io {
-        self.io
+        self.0.into_io()
     }
+}
 
-    #[must_use]
-    pub fn poll_message(&mut self) -> Option<ReceivedMessage> {
-        self.core.poll_message()
+impl<Io> Deref for HostDriver<Io> {
+    type Target = AdapterDriver<Io>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
+}
 
-    #[must_use]
-    pub fn poll_send_failed(&mut self) -> Option<SendFailedEvent> {
-        self.core.poll_send_failed()
+impl<Io> DerefMut for HostDriver<Io> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }

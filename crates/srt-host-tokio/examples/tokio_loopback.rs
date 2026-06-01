@@ -20,7 +20,10 @@ async fn main() {
         b.poll_once(now_ms, &mut rx_b).await.expect("b poll failed");
 
         if let Some(message) = b.poll_message() {
-            println!("host-b received: {}", core::str::from_utf8(message.as_bytes()).unwrap());
+            println!(
+                "host-b received: {}",
+                core::str::from_utf8(message.as_bytes()).unwrap()
+            );
             return;
         }
     }

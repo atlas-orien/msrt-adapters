@@ -1,37 +1,35 @@
-use srt_adapter_core::{AdapterCore, ReceivedMessage, SendFailedEvent};
+use core::ops::{Deref, DerefMut};
+
+use srt_adapter_core::AdapterDriver;
 
 /// Drives SRT engine state over an async UART-like byte stream.
 #[derive(Debug)]
-pub struct UartDriver<Uart> {
-    pub(crate) uart: Uart,
-    pub(crate) core: AdapterCore,
-}
+pub struct UartDriver<Uart>(AdapterDriver<Uart>);
 
 impl<Uart> UartDriver<Uart> {
     /// Creates a UART driver with default SRT engine config.
     #[must_use]
     pub fn new(uart: Uart) -> Self {
-        Self {
-            uart,
-            core: AdapterCore::new(),
-        }
+        Self(AdapterDriver::new(uart))
     }
 
     /// Releases only the UART object.
     #[must_use]
     pub fn into_uart(self) -> Uart {
-        self.uart
+        self.0.into_io()
     }
+}
 
-    /// Polls one completed incoming message if available.
-    #[must_use]
-    pub fn poll_message(&mut self) -> Option<ReceivedMessage> {
-        self.core.poll_message()
+impl<Uart> Deref for UartDriver<Uart> {
+    type Target = AdapterDriver<Uart>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
+}
 
-    /// Polls one reliable-send failure event if available.
-    #[must_use]
-    pub fn poll_send_failed(&mut self) -> Option<SendFailedEvent> {
-        self.core.poll_send_failed()
+impl<Uart> DerefMut for UartDriver<Uart> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }

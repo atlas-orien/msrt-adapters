@@ -3,8 +3,9 @@
 
 mod driver;
 mod io_pump;
-mod send;
 mod singleton;
 
 pub use driver::UartDriver;
-pub use srt_adapter_core::{Error, ErrorKind, IoErrorKind, ReceivedMessage, Result, SendFailedEvent, SendFailedReason};
+pub use srt_adapter_core::{
+    Error, ErrorKind, IoErrorKind, ReceivedMessage, Result, SendFailedEvent, SendFailedReason,
+};
