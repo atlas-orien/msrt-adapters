@@ -2,14 +2,14 @@
 
 Embassy-friendly UART adapter for SRT.
 
-This crate bridges `srt::Engine` and `embedded-io-async` UART-like drivers with a `poll_once` model.
+This crate bridges SRT and `embedded-io-async` UART-like drivers with a `poll_once` model.
 
 ## API
 
-- `send_message(message) -> Result<MessageId>`
+- `send_message(message) -> Result<()>`
 - `poll_once(now_ms, rx_buf).await -> Result<()>`
-- `poll_message() -> Option<Message>`
-- `poll_send_failed() -> Option<SendFailed>`
+- `poll_message() -> Option<ReceivedMessage>`
+- `poll_send_failed() -> Option<SendFailedEvent>`
 
 `send_message` only submits data to the protocol engine. Reliable delivery is progressed by repeated `poll_once` calls.
 
@@ -29,15 +29,13 @@ Queue overflow is explicitly reported via:
 ## Minimal Usage
 
 ```rust
-use srt::{Config, Engine};
 use srt_embassy_uart::{Result, UartDriver};
 
 async fn run<U: embedded_io_async::Read + embedded_io_async::Write>(uart: U) -> Result<()> {
-    let engine = Engine::new(Config::default());
-    let mut driver = UartDriver::new(uart, engine);
+    let mut driver = UartDriver::new(uart);
     let mut rx_buf = [0u8; 128];
 
-    let _message_id = driver.send_message(b"hello")?;
+    driver.send_message(b"hello")?;
 
     loop {
         driver.poll_once(1000, &mut rx_buf).await?;

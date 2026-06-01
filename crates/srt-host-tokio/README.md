@@ -14,3 +14,9 @@ This crate is the OS-side peer for `srt-embassy-uart`. It uses `tokio::io::Async
 ```sh
 cargo run -p srt-host-tokio --example tokio_loopback
 ```
+
+QEMU TCP serial client:
+
+```sh
+cargo run -p srt-host-tokio --example qemu_tcp_client
+```

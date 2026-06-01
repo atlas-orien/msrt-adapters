@@ -8,7 +8,6 @@ use std::{
 
 use embedded_io_async::{ErrorType, Read, Write};
 use futures::executor::block_on;
-use srt::{Config, Engine};
 use srt_embassy_uart::UartDriver;
 
 #[derive(Clone, Default)]
@@ -81,8 +80,8 @@ fn main() {
         let pipe = SharedPipe::default();
         let (uart_a, uart_b) = pipe.endpoints();
 
-        let mut a = UartDriver::new(uart_a, Engine::new(Config::default()));
-        let mut b = UartDriver::new(uart_b, Engine::new(Config::default()));
+        let mut a = UartDriver::new(uart_a);
+        let mut b = UartDriver::new(uart_b);
 
         let _ = a
             .send_message(b"hello from a")

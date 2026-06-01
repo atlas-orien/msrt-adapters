@@ -12,10 +12,10 @@ default = []
 
 [dependencies]
 srt = { workspace = true }
-tokio = { version = "1", features = ["io-util", "time"] }
+tokio = { version = "1", features = ["io-util", "io-std", "net", "time"] }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-util", "time"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-util", "io-std", "net", "time"] }
 
 [lints]
 workspace = true
