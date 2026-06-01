@@ -13,6 +13,7 @@ std = ["critical-section/std"]
 
 [dependencies]
 srt = { workspace = true }
+srt-adapter-core = { path = "../srt-adapter-core", version = "0.1.0" }
 embedded-io-async = { workspace = true }
 critical-section = "1"
 

@@ -192,6 +192,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "srt-adapter-core"
+version = "0.1.0"
+dependencies = [
+ "embedded-io-async",
+ "srt",
+]
+
+[[package]]
 name = "srt-core"
 version = "0.1.0"
 dependencies = [
@@ -206,6 +214,7 @@ dependencies = [
  "embedded-io-async",
  "futures",
  "srt",
+ "srt-adapter-core",
 ]
 
 [[package]]

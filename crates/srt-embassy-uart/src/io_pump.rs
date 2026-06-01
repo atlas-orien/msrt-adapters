@@ -1,7 +1,6 @@
 use embedded_io_async::{Read, Write};
-use srt::{Event, Receive};
 
-use crate::{Error, ErrorKind, Result, UartDriver};
+use crate::{Error, Result, UartDriver};
 
 impl<Uart> UartDriver<Uart>
 where
@@ -12,43 +11,21 @@ where
     /// One call performs a bounded step:
     /// tick time, drain engine events, then read UART bytes and feed engine.
     pub async fn poll_once(&mut self, now_ms: u64, rx_buf: &mut [u8]) -> Result<()> {
-        self.engine.tick(now_ms);
-        self.drain_engine_events().await?;
+        self.core.begin_poll(now_ms);
+        self.drain_writes().await?;
 
-        let len = self.uart.read(rx_buf).await.map_err(Error::uart_read_from)?;
-
-        if len > 0 {
-            let report = self.engine.receive(&rx_buf[..len]);
-            if let Receive::Error(error) = report {
-                return Err(Error::from(error));
-            }
-            self.drain_engine_events().await?;
-        }
-
-        Ok(())
+        let len = self.uart.read(rx_buf).await.map_err(Error::embedded_io_read)?;
+        self.core.read_completed(&rx_buf[..len])?;
+        self.drain_writes().await
     }
 
-    async fn drain_engine_events(&mut self) -> Result<()> {
-        while let Some(event) = self.engine.poll_event() {
-            match event {
-                Event::Write(write) => {
-                    self.uart
-                        .write_all(write.as_bytes())
-                        .await
-                        .map_err(Error::uart_write_from)?;
-                    self.uart.flush().await.map_err(Error::uart_flush_from)?;
-                }
-                Event::Message(message) => {
-                    if !self.push_message(message) {
-                        return Err(Error::new(ErrorKind::MessageQueueFull));
-                    }
-                }
-                Event::SendFailed(failed) => {
-                    if !self.push_send_failed(failed) {
-                        return Err(Error::new(ErrorKind::SendFailedQueueFull));
-                    }
-                }
-            }
+    async fn drain_writes(&mut self) -> Result<()> {
+        while let Some(write) = self.core.poll_write()? {
+            self.uart
+                .write_all(write.as_bytes())
+                .await
+                .map_err(Error::embedded_io_write)?;
+            self.uart.flush().await.map_err(Error::embedded_io_flush)?;
         }
 
         Ok(())

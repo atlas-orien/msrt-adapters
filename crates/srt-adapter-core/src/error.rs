@@ -1,23 +1,23 @@
 use srt::{SendFailed, core::Error as SrtError};
 
-/// Broad error category for `srt-embassy-uart` failures.
+/// Broad error category for SRT adapters.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ErrorKind {
-    /// UART read operation failed.
-    UartRead,
-    /// UART write operation failed.
-    UartWrite,
-    /// UART flush operation failed.
-    UartFlush,
+    /// Read operation failed.
+    IoRead,
+    /// Write operation failed.
+    IoWrite,
+    /// Flush operation failed.
+    IoFlush,
     /// SRT protocol operation failed.
     Protocol,
     /// Reliable send failed in SRT engine.
     SendFailed,
-    /// Global driver helper is not initialized.
+    /// Singleton API is not initialized.
     NotInitialized,
-    /// Global driver helper was initialized twice.
+    /// Singleton API was initialized twice.
     AlreadyInitialized,
-    /// Global driver helper is temporarily unavailable.
+    /// Singleton API is temporarily unavailable.
     GlobalBusy,
     /// Internal received-message queue is full.
     MessageQueueFull,
@@ -25,35 +25,24 @@ pub enum ErrorKind {
     SendFailedQueueFull,
 }
 
-/// Coarse UART error classification.
+/// Coarse I/O error classification.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum UartErrorKind {
+pub enum IoErrorKind {
     /// Underlying bus or device is not connected.
     NotConnected,
     /// Requested operation is not supported.
     Unsupported,
     /// Operation timed out.
     TimedOut,
-    /// Any other UART error category.
+    /// Any other I/O error category.
     Other,
-}
-
-impl From<embedded_io_async::ErrorKind> for UartErrorKind {
-    fn from(value: embedded_io_async::ErrorKind) -> Self {
-        match value {
-            embedded_io_async::ErrorKind::NotConnected => Self::NotConnected,
-            embedded_io_async::ErrorKind::Unsupported => Self::Unsupported,
-            embedded_io_async::ErrorKind::TimedOut => Self::TimedOut,
-            _ => Self::Other,
-        }
-    }
 }
 
 /// Shared adapter error.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Error {
     kind: ErrorKind,
-    uart_error_kind: Option<UartErrorKind>,
+    io_error_kind: Option<IoErrorKind>,
     protocol_error: Option<SrtError>,
     send_failed: Option<SendFailed>,
 }
@@ -64,7 +53,7 @@ impl Error {
     pub const fn new(kind: ErrorKind) -> Self {
         Self {
             kind,
-            uart_error_kind: None,
+            io_error_kind: None,
             protocol_error: None,
             send_failed: None,
         }
@@ -76,10 +65,10 @@ impl Error {
         self.kind
     }
 
-    /// Returns UART error classification if this is a UART error.
+    /// Returns I/O error classification if this is an I/O error.
     #[must_use]
-    pub const fn uart_error_kind(self) -> Option<UartErrorKind> {
-        self.uart_error_kind
+    pub const fn io_error_kind(self) -> Option<IoErrorKind> {
+        self.io_error_kind
     }
 
     /// Returns the embedded SRT protocol error if present.
@@ -94,37 +83,64 @@ impl Error {
         self.send_failed
     }
 
-    /// Creates a UART read error.
+    /// Creates an I/O read error.
     #[must_use]
-    pub const fn uart_read(kind: UartErrorKind) -> Self {
+    pub const fn io_read(kind: IoErrorKind) -> Self {
         Self {
-            kind: ErrorKind::UartRead,
-            uart_error_kind: Some(kind),
+            kind: ErrorKind::IoRead,
+            io_error_kind: Some(kind),
             protocol_error: None,
             send_failed: None,
         }
     }
 
-    /// Creates a UART write error.
+    /// Creates an I/O write error.
     #[must_use]
-    pub const fn uart_write(kind: UartErrorKind) -> Self {
+    pub const fn io_write(kind: IoErrorKind) -> Self {
         Self {
-            kind: ErrorKind::UartWrite,
-            uart_error_kind: Some(kind),
+            kind: ErrorKind::IoWrite,
+            io_error_kind: Some(kind),
             protocol_error: None,
             send_failed: None,
         }
     }
 
-    /// Creates a UART flush error.
+    /// Creates an I/O flush error.
     #[must_use]
-    pub const fn uart_flush(kind: UartErrorKind) -> Self {
+    pub const fn io_flush(kind: IoErrorKind) -> Self {
         Self {
-            kind: ErrorKind::UartFlush,
-            uart_error_kind: Some(kind),
+            kind: ErrorKind::IoFlush,
+            io_error_kind: Some(kind),
             protocol_error: None,
             send_failed: None,
         }
+    }
+
+    /// Creates an I/O read error from an embedded-io error.
+    #[must_use]
+    pub fn embedded_io_read<E>(error: E) -> Self
+    where
+        E: embedded_io_async::Error,
+    {
+        Self::io_read(IoErrorKind::from_embedded_io(error))
+    }
+
+    /// Creates an I/O write error from an embedded-io error.
+    #[must_use]
+    pub fn embedded_io_write<E>(error: E) -> Self
+    where
+        E: embedded_io_async::Error,
+    {
+        Self::io_write(IoErrorKind::from_embedded_io(error))
+    }
+
+    /// Creates an I/O flush error from an embedded-io error.
+    #[must_use]
+    pub fn embedded_io_flush<E>(error: E) -> Self
+    where
+        E: embedded_io_async::Error,
+    {
+        Self::io_flush(IoErrorKind::from_embedded_io(error))
     }
 
     /// Creates a protocol error.
@@ -132,7 +148,7 @@ impl Error {
     pub const fn protocol(error: SrtError) -> Self {
         Self {
             kind: ErrorKind::Protocol,
-            uart_error_kind: None,
+            io_error_kind: None,
             protocol_error: Some(error),
             send_failed: None,
         }
@@ -143,37 +159,26 @@ impl Error {
     pub const fn send_failed_error(failed: SendFailed) -> Self {
         Self {
             kind: ErrorKind::SendFailed,
-            uart_error_kind: None,
+            io_error_kind: None,
             protocol_error: None,
             send_failed: Some(failed),
         }
     }
+}
 
-    /// Creates a UART read error from a concrete UART error value.
+impl IoErrorKind {
+    /// Converts an embedded-io error into an adapter I/O error kind.
     #[must_use]
-    pub fn uart_read_from<E>(error: E) -> Self
+    pub fn from_embedded_io<E>(error: E) -> Self
     where
         E: embedded_io_async::Error,
     {
-        Self::uart_read(UartErrorKind::from(embedded_io_async::Error::kind(&error)))
-    }
-
-    /// Creates a UART write error from a concrete UART error value.
-    #[must_use]
-    pub fn uart_write_from<E>(error: E) -> Self
-    where
-        E: embedded_io_async::Error,
-    {
-        Self::uart_write(UartErrorKind::from(embedded_io_async::Error::kind(&error)))
-    }
-
-    /// Creates a UART flush error from a concrete UART error value.
-    #[must_use]
-    pub fn uart_flush_from<E>(error: E) -> Self
-    where
-        E: embedded_io_async::Error,
-    {
-        Self::uart_flush(UartErrorKind::from(embedded_io_async::Error::kind(&error)))
+        match embedded_io_async::Error::kind(&error) {
+            embedded_io_async::ErrorKind::NotConnected => Self::NotConnected,
+            embedded_io_async::ErrorKind::Unsupported => Self::Unsupported,
+            embedded_io_async::ErrorKind::TimedOut => Self::TimedOut,
+            _ => Self::Other,
+        }
     }
 }
 
@@ -189,5 +194,5 @@ impl From<SendFailed> for Error {
     }
 }
 
-/// Shared result type for `srt-embassy-uart`.
+/// Shared result type for SRT adapters.
 pub type Result<T> = core::result::Result<T, Error>;
