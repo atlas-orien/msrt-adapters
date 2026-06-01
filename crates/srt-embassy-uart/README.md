@@ -21,6 +21,11 @@ This crate defines a unified boundary:
 - `Error`
 - `Result<T>`
 
+Queue overflow is explicitly reported via:
+
+- `ErrorKind::MessageQueueFull`
+- `ErrorKind::SendFailedQueueFull`
+
 ## Minimal Usage
 
 ```rust

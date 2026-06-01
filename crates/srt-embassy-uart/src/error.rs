@@ -13,6 +13,10 @@ pub enum ErrorKind {
     Protocol,
     /// Reliable send failed in SRT engine.
     SendFailed,
+    /// Internal received-message queue is full.
+    MessageQueueFull,
+    /// Internal send-failed queue is full.
+    SendFailedQueueFull,
 }
 
 /// Coarse UART error classification.
