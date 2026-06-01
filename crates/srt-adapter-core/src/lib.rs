@@ -4,9 +4,9 @@
 mod adapter;
 mod error;
 mod event;
-mod queue;
+mod pending_events;
 
 pub use adapter::AdapterCore;
 pub use error::{Error, ErrorKind, IoErrorKind, Result};
 pub use event::{ReceivedMessage, SendFailedEvent, SendFailedReason};
-pub use queue::{EventQueues, MESSAGE_QUEUE_CAPACITY, SEND_FAILED_QUEUE_CAPACITY};
+pub use pending_events::PendingEventHandler;

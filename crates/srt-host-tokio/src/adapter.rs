@@ -1,4 +1,6 @@
-use srt_adapter_core::{AdapterCore, ReceivedMessage, Result, SendFailedEvent};
+use srt_adapter_core::{
+    AdapterCore, PendingEventHandler, ReceivedMessage, Result, SendFailedEvent,
+};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use tokio::time::{Duration, timeout};
 
@@ -11,6 +13,30 @@ pub enum HostTaskError {
     Adapter(Error),
     /// A reliable send reached its retry limit.
     SendFailed(SendFailedEvent),
+}
+
+/// Handles events produced by a host adapter task.
+pub trait HostEventHandler {
+    fn handle_message(&mut self, message: ReceivedMessage);
+
+    fn handle_error(&mut self, error: HostTaskError);
+}
+
+struct CoreEventHandler<'a, Handler> {
+    handler: &'a mut Handler,
+}
+
+impl<Handler> PendingEventHandler for CoreEventHandler<'_, Handler>
+where
+    Handler: HostEventHandler,
+{
+    fn handle_message(&mut self, message: ReceivedMessage) {
+        self.handler.handle_message(message);
+    }
+
+    fn handle_send_failed(&mut self, failed: SendFailedEvent) {
+        self.handler.handle_error(HostTaskError::SendFailed(failed));
+    }
 }
 
 /// Adapts SRT protocol state to a Tokio async byte stream.
@@ -60,23 +86,19 @@ where
         self.drain_writes().await
     }
 
-    pub async fn poll_once_dispatch<MessageHandler, ErrorHandler>(
+    pub async fn poll_once_dispatch<Handler>(
         &mut self,
         now_ms: u64,
         rx_buf: &mut [u8],
-        handle_message: MessageHandler,
-        mut handle_error: ErrorHandler,
+        handler: &mut Handler,
     ) where
-        MessageHandler: FnMut(ReceivedMessage),
-        ErrorHandler: FnMut(HostTaskError),
+        Handler: HostEventHandler,
     {
         if let Err(error) = self.poll_once(now_ms, rx_buf).await {
-            handle_error(HostTaskError::Adapter(error));
+            handler.handle_error(HostTaskError::Adapter(error));
         }
 
-        self.core.dispatch_events(handle_message, |failed| {
-            handle_error(HostTaskError::SendFailed(failed));
-        });
+        self.core.dispatch_events(&mut CoreEventHandler { handler });
     }
 
     async fn drain_writes(&mut self) -> Result<()> {

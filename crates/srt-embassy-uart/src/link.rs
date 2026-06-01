@@ -1,6 +1,6 @@
-/// Defines a single global SRT UART API for one MCU UART link.
+/// Defines one global SRT UART link API for an MCU-to-host UART connection.
 ///
-/// The generated public API is intentionally small: initialize once, then use
+/// The generated link API is intentionally small: initialize once, then use
 /// `send_message` and `debug` from application code. The generated `run_task`
 /// owns the UART adapter loop and should be spawned by the application startup.
 #[macro_export]
@@ -41,15 +41,13 @@ macro_rules! define_srt_uart {
             })
         }
 
-        pub async fn run_task<MessageHandler, ErrorHandler>(
+        pub async fn run_task<Handler>(
             mut now: impl FnMut() -> u64,
             rx_buf: &mut [u8],
-            mut handle_message: MessageHandler,
-            mut handle_error: ErrorHandler,
+            handler: &mut Handler,
         ) where
             $uart_ty: ::embedded_io_async::Read + ::embedded_io_async::Write,
-            MessageHandler: FnMut($crate::ReceivedMessage),
-            ErrorHandler: FnMut($crate::UartTaskError),
+            Handler: $crate::UartEventHandler,
         {
             loop {
                 let mut adapter = ::critical_section::with(|cs| {
@@ -60,9 +58,7 @@ macro_rules! define_srt_uart {
                         .expect("SRT UART is not initialized")
                 });
 
-                adapter
-                    .poll_once_dispatch(now(), rx_buf, &mut handle_message, &mut handle_error)
-                    .await;
+                adapter.poll_once_dispatch(now(), rx_buf, handler).await;
 
                 ::critical_section::with(|cs| {
                     *SRT_ADAPTER.borrow(cs).borrow_mut() = Some(adapter);

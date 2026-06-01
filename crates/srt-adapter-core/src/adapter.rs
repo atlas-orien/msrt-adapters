@@ -1,10 +1,13 @@
-use crate::{Error, EventQueues, ReceivedMessage, Result, SendFailedEvent};
+use crate::{
+    Error, ReceivedMessage, Result, SendFailedEvent,
+    pending_events::{PendingEventHandler, PendingEvents},
+};
 
 /// Platform-independent SRT adapter state.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdapterCore {
     engine: srt::Engine,
-    events: EventQueues,
+    pending_events: PendingEvents,
 }
 
 impl AdapterCore {
@@ -13,7 +16,7 @@ impl AdapterCore {
     pub fn new() -> Self {
         Self {
             engine: srt::Engine::new(srt::Config::default()),
-            events: EventQueues::new(),
+            pending_events: PendingEvents::new(),
         }
     }
 
@@ -45,15 +48,11 @@ impl AdapterCore {
     }
 
     /// Dispatches all completed adapter events to handlers.
-    pub fn dispatch_events<MessageHandler, SendFailedHandler>(
-        &mut self,
-        handle_message: MessageHandler,
-        handle_send_failed: SendFailedHandler,
-    ) where
-        MessageHandler: FnMut(ReceivedMessage),
-        SendFailedHandler: FnMut(SendFailedEvent),
+    pub fn dispatch_events<Handler>(&mut self, handler: &mut Handler)
+    where
+        Handler: PendingEventHandler,
     {
-        self.events.dispatch(handle_message, handle_send_failed);
+        self.pending_events.dispatch(handler);
     }
 
     /// Drains engine events, calling `write` for each wire write event.
@@ -66,10 +65,10 @@ impl AdapterCore {
             match event {
                 srt::Event::Write(write_event) => write(write_event).await?,
                 srt::Event::Message(message) => self
-                    .events
+                    .pending_events
                     .push_message(ReceivedMessage::from_srt(message))?,
                 srt::Event::SendFailed(failed) => self
-                    .events
+                    .pending_events
                     .push_send_failed(SendFailedEvent::from_srt(failed))?,
             }
         }
@@ -77,16 +76,16 @@ impl AdapterCore {
         Ok(())
     }
 
-    /// Polls the next wire write event, queueing non-write events internally.
+    /// Polls the next wire write event, storing non-write events internally.
     pub fn poll_write(&mut self) -> Result<Option<srt::Write>> {
         while let Some(event) = self.engine.poll_event() {
             match event {
                 srt::Event::Write(write) => return Ok(Some(write)),
                 srt::Event::Message(message) => self
-                    .events
+                    .pending_events
                     .push_message(ReceivedMessage::from_srt(message))?,
                 srt::Event::SendFailed(failed) => self
-                    .events
+                    .pending_events
                     .push_send_failed(SendFailedEvent::from_srt(failed))?,
             }
         }

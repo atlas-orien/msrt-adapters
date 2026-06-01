@@ -19,10 +19,10 @@ pub enum ErrorKind {
     AlreadyInitialized,
     /// Singleton API is temporarily unavailable.
     GlobalBusy,
-    /// Internal received-message queue is full.
-    MessageQueueFull,
-    /// Internal send-failed queue is full.
-    SendFailedQueueFull,
+    /// Internal received-message pending events are full.
+    MessageEventsFull,
+    /// Internal send-failed pending events are full.
+    SendFailedEventsFull,
 }
 
 /// Coarse I/O error classification.

@@ -22,3 +22,7 @@ futures = { version = "0.3", default-features = true }
 
 [lints]
 workspace = true
+
+[[example]]
+name = "mcu_uart_link"
+required-features = ["std"]

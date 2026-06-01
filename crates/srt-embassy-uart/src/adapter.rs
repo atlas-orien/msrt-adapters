@@ -1,5 +1,7 @@
 use embedded_io_async::{Read, Write};
-use srt_adapter_core::{AdapterCore, ReceivedMessage, Result, SendFailedEvent};
+use srt_adapter_core::{
+    AdapterCore, PendingEventHandler, ReceivedMessage, Result, SendFailedEvent,
+};
 
 use crate::Error;
 
@@ -10,6 +12,32 @@ pub enum UartTaskError {
     Adapter(Error),
     /// A reliable send reached its retry limit.
     SendFailed(SendFailedEvent),
+}
+
+/// Handles events produced by a UART adapter task.
+pub trait UartEventHandler {
+    /// Handles one complete received message.
+    fn handle_message(&mut self, message: ReceivedMessage);
+
+    /// Handles one adapter or reliable-send error.
+    fn handle_error(&mut self, error: UartTaskError);
+}
+
+struct CoreEventHandler<'a, Handler> {
+    handler: &'a mut Handler,
+}
+
+impl<Handler> PendingEventHandler for CoreEventHandler<'_, Handler>
+where
+    Handler: UartEventHandler,
+{
+    fn handle_message(&mut self, message: ReceivedMessage) {
+        self.handler.handle_message(message);
+    }
+
+    fn handle_send_failed(&mut self, failed: SendFailedEvent) {
+        self.handler.handle_error(UartTaskError::SendFailed(failed));
+    }
 }
 
 /// Adapts SRT protocol state to an async UART-like byte stream.
@@ -68,23 +96,19 @@ where
     }
 
     /// Advances protocol state once and dispatches resulting events to handlers.
-    pub async fn poll_once_dispatch<MessageHandler, ErrorHandler>(
+    pub async fn poll_once_dispatch<Handler>(
         &mut self,
         now_ms: u64,
         rx_buf: &mut [u8],
-        handle_message: MessageHandler,
-        mut handle_error: ErrorHandler,
+        handler: &mut Handler,
     ) where
-        MessageHandler: FnMut(ReceivedMessage),
-        ErrorHandler: FnMut(UartTaskError),
+        Handler: UartEventHandler,
     {
         if let Err(error) = self.poll_once(now_ms, rx_buf).await {
-            handle_error(UartTaskError::Adapter(error));
+            handler.handle_error(UartTaskError::Adapter(error));
         }
 
-        self.core.dispatch_events(handle_message, |failed| {
-            handle_error(UartTaskError::SendFailed(failed));
-        });
+        self.core.dispatch_events(&mut CoreEventHandler { handler });
     }
 
     async fn drain_writes(&mut self) -> Result<()> {
