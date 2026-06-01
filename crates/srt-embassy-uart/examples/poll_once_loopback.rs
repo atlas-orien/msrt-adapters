@@ -83,14 +83,15 @@ fn main() {
         let mut a = UartDriver::new(uart_a);
         let mut b = UartDriver::new(uart_b);
 
-        let _ = a
-            .send_message(b"hello from a")
+        a.send_message(b"hello from a")
             .expect("send_message failed");
+        a.debug(b"log from a").expect("debug failed");
 
         let mut rx_a = [0u8; 128];
         let mut rx_b = [0u8; 128];
 
-        let mut delivered = false;
+        let mut got_default = false;
+        let mut got_log = false;
         for now_ms in 0..200_u64 {
             a.poll_once(now_ms, &mut rx_a)
                 .await
@@ -100,19 +101,30 @@ fn main() {
                 .expect("b poll_once failed");
 
             if let Some(message) = b.poll_message() {
-                println!(
-                    "b received: {}",
-                    core::str::from_utf8(message.as_bytes()).unwrap()
-                );
-                delivered = true;
-                break;
+                match message.channel_id_u8() {
+                    0 => {
+                        assert_eq!(message.as_bytes(), b"hello from a");
+                        got_default = true;
+                    }
+                    1 => {
+                        assert_eq!(message.as_bytes(), b"log from a");
+                        got_log = true;
+                    }
+                    other => panic!("unexpected channel: {other}"),
+                }
             }
 
             if let Some(failed) = a.poll_send_failed() {
                 panic!("send failed unexpectedly: {failed:?}");
             }
+
+            if got_default && got_log {
+                println!("b received both default and log channels");
+                return;
+            }
         }
 
-        assert!(delivered, "message was not delivered in test loop");
+        assert!(got_default, "default-channel message was not delivered");
+        assert!(got_log, "log-channel message was not delivered");
     });
 }

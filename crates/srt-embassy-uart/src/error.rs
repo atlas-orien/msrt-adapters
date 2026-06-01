@@ -13,6 +13,12 @@ pub enum ErrorKind {
     Protocol,
     /// Reliable send failed in SRT engine.
     SendFailed,
+    /// Global driver helper is not initialized.
+    NotInitialized,
+    /// Global driver helper was initialized twice.
+    AlreadyInitialized,
+    /// Global driver helper is temporarily unavailable.
+    GlobalBusy,
     /// Internal received-message queue is full.
     MessageQueueFull,
     /// Internal send-failed queue is full.

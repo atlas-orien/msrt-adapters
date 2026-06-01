@@ -9,6 +9,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e748733b7cbc798e1434b6ac524f0c1ff2ab456fe201501e6497c8417a4fc33"
 
 [[package]]
+name = "critical-section"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "790eea4361631c5e7d22598ecd5723ff611904e3344ce8720784c93e3d83d40b"
+
+[[package]]
 name = "embedded-io"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -196,6 +202,7 @@ dependencies = [
 name = "srt-embassy-uart"
 version = "0.1.0"
 dependencies = [
+ "critical-section",
  "embedded-io-async",
  "futures",
  "srt",

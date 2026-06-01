@@ -6,7 +6,7 @@ const SEND_FAILED_QUEUE_CAPACITY: usize = 8;
 /// A fully received message surfaced by this adapter.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ReceivedMessage {
-    channel_id: u16,
+    channel_id: u8,
     message_id: u32,
     bytes: [u8; srt::MAX_MESSAGE_BYTES],
     len: usize,
@@ -15,6 +15,11 @@ pub struct ReceivedMessage {
 impl ReceivedMessage {
     #[must_use]
     pub const fn channel_id(self) -> u16 {
+        self.channel_id as u16
+    }
+
+    #[must_use]
+    pub const fn channel_id_u8(self) -> u8 {
         self.channel_id
     }
 
@@ -38,7 +43,7 @@ pub enum SendFailedReason {
 /// A reliable-send failure surfaced by this adapter.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SendFailedEvent {
-    channel_id: u16,
+    channel_id: u8,
     message_id: u32,
     reason: SendFailedReason,
 }
@@ -46,6 +51,11 @@ pub struct SendFailedEvent {
 impl SendFailedEvent {
     #[must_use]
     pub const fn channel_id(self) -> u16 {
+        self.channel_id as u16
+    }
+
+    #[must_use]
+    pub const fn channel_id_u8(self) -> u8 {
         self.channel_id
     }
 

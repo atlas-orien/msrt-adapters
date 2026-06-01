@@ -9,10 +9,12 @@ description = "Embassy-friendly UART adapter boundary for the SRT protocol."
 
 [features]
 default = []
+std = ["critical-section/std"]
 
 [dependencies]
 srt = { workspace = true }
 embedded-io-async = { workspace = true }
+critical-section = "1"
 
 [dev-dependencies]
 futures = { version = "0.3", default-features = true }
