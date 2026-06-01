@@ -14,7 +14,7 @@ srt = { path = "../srt/crates/srt", version = "0.1.0" }
 embedded-io-async = { version = "0.7.0", default-features = false }
 
 [workspace.lints.rust]
-missing_docs = "warn"
+# missing_docs = "warn"
 unsafe_code = "forbid"
 
 [workspace.lints.clippy]

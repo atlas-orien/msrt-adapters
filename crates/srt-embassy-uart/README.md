@@ -53,3 +53,9 @@ async fn run<U: embedded_io_async::Read + embedded_io_async::Write>(uart: U) -> 
     }
 }
 ```
+
+## Run Example
+
+```sh
+cargo run -p srt-embassy-uart --example poll_once_loopback
+```

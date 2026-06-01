@@ -17,9 +17,11 @@ Current status: scaffold only. The first adapter crate is `srt-embassy-uart`; it
 
 ```text
 crates/srt-embassy-uart
+crates/srt-host-tokio
 ```
 
 Embassy-friendly UART adapter boundary built on `embedded-io-async`.
+Tokio host adapter boundary built on OS async I/O.
 
 ## Run
 
