@@ -62,14 +62,14 @@ Phase 1 使用显式 `poll_once` 模型。
 
 ## 核心对象
 
-`UartDriver<Uart>` 拥有：
+`UartAdapter<Uart>` 拥有：
 
 - `uart: Uart`
 - `engine: srt::Engine`
 - 接收完成的 message 缓存
 - 发送失败状态缓存
 
-`UartDriver` 是一个单所有权对象。
+`UartAdapter` 是一个单所有权对象。
 
 Phase 1 不引入共享 handle，不引入内部锁，也不引入后台 task。用户可以把它放进自己的主循环、Embassy task、RTIC task 或其他调度模型中。
 
@@ -78,25 +78,21 @@ Phase 1 不引入共享 handle，不引入内部锁，也不引入后台 task。
 Phase 1 推荐的核心 API：
 
 ```rust
-impl<Uart> UartDriver<Uart> {
+impl<Uart> UartAdapter<Uart> {
     pub const fn new(uart: Uart, engine: srt::Engine) -> Self;
 
     pub fn send_message(&mut self, message: &[u8]) -> Result<srt::core::MessageId>;
 
     pub async fn poll_once(&mut self, now_ms: u64, rx_buf: &mut [u8]) -> Result<()>;
 
-    pub fn poll_message(&mut self) -> Option<srt::Message>;
-
-    pub fn poll_send_failed(&mut self) -> Option<srt::SendFailed>;
-}
+    }
 ```
 
 其中：
 
 - `send_message` 只表示提交一条待发送 message
 - `poll_once` 才是真正推进协议状态的函数
-- `poll_message` 用来取出已经完整接收的 message
-- `poll_send_failed` 用来取出可靠发送失败事件
+- `poll_once_dispatch` 用 handler 分发完整 message 和发送失败事件
 
 ## send_message 语义
 
@@ -144,15 +140,14 @@ application message
 
 ```rust
 loop {
-    driver.poll_once(now_ms(), &mut rx_buf).await?;
+    adapter.poll_once(now_ms(), &mut rx_buf).await?;
 
-    while let Some(message) = driver.poll_message() {
-        app.handle_message(message);
-    }
-
-    while let Some(failed) = driver.poll_send_failed() {
-        app.handle_send_failed(failed);
-    }
+    adapter.poll_once_dispatch(
+        now_ms(),
+        &mut rx_buf,
+        |message| app.handle_message(message),
+        |error| app.handle_error(error),
+    ).await;
 }
 ```
 
@@ -176,7 +171,7 @@ loop {
 未来可以在这个基础上增加：
 
 ```rust
-driver.run(callbacks).await
+adapter.run(callbacks).await
 handle.send_message(message).await
 handle.recv_message().await
 ```
@@ -188,21 +183,20 @@ handle.recv_message().await
 典型 MCU 使用方式：
 
 ```rust
-let mut driver = UartDriver::new(uart, engine);
+let mut adapter = UartAdapter::new(uart, engine);
 let mut rx_buf = [0u8; 128];
 
-driver.send_message(b"hello")?;
+adapter.send_message(b"hello")?;
 
 loop {
-    driver.poll_once(now_ms(), &mut rx_buf).await?;
+    adapter.poll_once(now_ms(), &mut rx_buf).await?;
 
-    while let Some(message) = driver.poll_message() {
-        app.handle_message(message);
-    }
-
-    while let Some(failed) = driver.poll_send_failed() {
-        app.handle_send_failed(failed);
-    }
+    adapter.poll_once_dispatch(
+        now_ms(),
+        &mut rx_buf,
+        |message| app.handle_message(message),
+        |error| app.handle_error(error),
+    ).await;
 }
 ```
 
@@ -210,23 +204,22 @@ loop {
 
 - `send_message`：提交消息
 - `poll_once`：推进协议
-- `poll_message`：取完整消息
-- `poll_send_failed`：取发送失败事件
+- `poll_once_dispatch`：推进协议并分发 message/error
 
 ## 和 srt::Engine 的关系
 
 `srt::Engine` 是协议状态机。
 
-`srt-embassy-uart::UartDriver` 是 I/O adapter。
+`srt-embassy-uart::UartAdapter` 是 I/O adapter。
 
 关系如下：
 
 ```text
 Application
     |
-    | send_message / poll_message
+    | send_message / poll_once_dispatch
     v
-UartDriver
+UartAdapter
     |
     | engine.send / engine.receive / engine.tick / engine.poll_event
     v
@@ -237,7 +230,7 @@ srt::Engine
 UART
 ```
 
-`UartDriver` 不应该把协议细节泄漏给应用层，但也不应该隐藏 MCU 调度模型。
+`UartAdapter` 不应该把协议细节泄漏给应用层，但也不应该隐藏 MCU 调度模型。
 
 ## 当前非目标
 
@@ -260,7 +253,6 @@ Phase 1 暂不处理：
 
 - `send_message`
 - `poll_once`
-- `poll_message`
-- `poll_send_failed`
+- `poll_once_dispatch`
 
 同时删除让用户误解为“send 已经可靠发送完成”的 API 命名。

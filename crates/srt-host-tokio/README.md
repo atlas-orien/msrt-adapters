@@ -5,9 +5,8 @@ Tokio host adapter for SRT.
 This crate is the OS-side peer for `srt-embassy-uart`. It uses `tokio::io::AsyncRead + AsyncWrite` and keeps the same protocol-driving model:
 
 - `send_message(message)`
-- `poll_once(now_ms, rx_buf).await`
-- `poll_message()`
-- `poll_send_failed()`
+- `debug(message)`
+- `poll_once_dispatch(now_ms, rx_buf, handle_message, handle_error).await`
 
 ## Run Example
 

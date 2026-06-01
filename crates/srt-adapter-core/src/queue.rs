@@ -42,19 +42,6 @@ impl EventQueues {
         Ok(())
     }
 
-    /// Polls one received message.
-    #[must_use]
-    pub fn poll_message(&mut self) -> Option<ReceivedMessage> {
-        if self.message_len == 0 {
-            return None;
-        }
-
-        let index = self.message_head;
-        self.message_head = (self.message_head + 1) % MESSAGE_QUEUE_CAPACITY;
-        self.message_len -= 1;
-        self.message_queue[index].take()
-    }
-
     /// Pushes one send-failed event.
     pub fn push_send_failed(&mut self, failed: SendFailedEvent) -> Result<()> {
         if self.send_failed_len >= SEND_FAILED_QUEUE_CAPACITY {
@@ -67,17 +54,32 @@ impl EventQueues {
         Ok(())
     }
 
-    /// Polls one send-failed event.
-    #[must_use]
-    pub fn poll_send_failed(&mut self) -> Option<SendFailedEvent> {
-        if self.send_failed_len == 0 {
-            return None;
+    /// Dispatches all queued adapter events.
+    pub fn dispatch<MessageHandler, SendFailedHandler>(
+        &mut self,
+        mut handle_message: MessageHandler,
+        mut handle_send_failed: SendFailedHandler,
+    ) where
+        MessageHandler: FnMut(ReceivedMessage),
+        SendFailedHandler: FnMut(SendFailedEvent),
+    {
+        while self.message_len > 0 {
+            let index = self.message_head;
+            self.message_head = (self.message_head + 1) % MESSAGE_QUEUE_CAPACITY;
+            self.message_len -= 1;
+            if let Some(message) = self.message_queue[index].take() {
+                handle_message(message);
+            }
         }
 
-        let index = self.send_failed_head;
-        self.send_failed_head = (self.send_failed_head + 1) % SEND_FAILED_QUEUE_CAPACITY;
-        self.send_failed_len -= 1;
-        self.send_failed_queue[index].take()
+        while self.send_failed_len > 0 {
+            let index = self.send_failed_head;
+            self.send_failed_head = (self.send_failed_head + 1) % SEND_FAILED_QUEUE_CAPACITY;
+            self.send_failed_len -= 1;
+            if let Some(failed) = self.send_failed_queue[index].take() {
+                handle_send_failed(failed);
+            }
+        }
     }
 }
 

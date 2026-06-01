@@ -2,7 +2,7 @@
 
 use std::time::Duration;
 
-use srt_host_tokio::HostDriver;
+use srt_host_tokio::{HostAdapter, HostTaskError};
 use tokio::{
     io::{self, AsyncBufReadExt, BufReader},
     net::TcpStream,
@@ -20,7 +20,7 @@ async fn main() {
 
     println!("connected");
 
-    let mut driver = HostDriver::new(stream);
+    let mut adapter = HostAdapter::new(stream);
     let mut rx_buf = [0u8; 256];
     let mut now_ms: u64 = 0;
 
@@ -38,7 +38,7 @@ async fn main() {
                             continue;
                         }
 
-                        match driver.send_message(text.as_bytes()) {
+                        match adapter.send_message(text.as_bytes()) {
                             Ok(()) => println!("sent"),
                             Err(err) => println!("send_message error: {:?}", err.kind()),
                         }
@@ -56,26 +56,29 @@ async fn main() {
             _ = sleep(Duration::from_millis(1)) => {
                 now_ms = now_ms.wrapping_add(1);
 
-                if let Err(err) = driver.poll_once(now_ms, &mut rx_buf).await {
-                    println!("poll_once error: {:?}", err.kind());
-                    continue;
-                }
-
-                while let Some(message) = driver.poll_message() {
-                    match core::str::from_utf8(message.as_bytes()) {
-                        Ok(text) => println!("recv: {text}"),
-                        Err(_) => println!("recv bytes: {:?}", message.as_bytes()),
-                    }
-                }
-
-                while let Some(failed) = driver.poll_send_failed() {
-                    println!(
-                        "send_failed: channel={} message_id={} reason={:?}",
-                        failed.channel_id(),
-                        failed.message_id(),
-                        failed.reason(),
-                    );
-                }
+                adapter
+                    .poll_once_dispatch(
+                        now_ms,
+                        &mut rx_buf,
+                        |message| match core::str::from_utf8(message.as_bytes()) {
+                            Ok(text) => println!("recv: {text}"),
+                            Err(_) => println!("recv bytes: {:?}", message.as_bytes()),
+                        },
+                        |error| match error {
+                            HostTaskError::Adapter(error) => {
+                                println!("adapter error: {:?}", error.kind());
+                            }
+                            HostTaskError::SendFailed(failed) => {
+                                println!(
+                                    "send_failed: channel={} message_id={} reason={:?}",
+                                    failed.channel_id(),
+                                    failed.message_id(),
+                                    failed.reason(),
+                                );
+                            }
+                        },
+                    )
+                    .await;
             }
         }
     }

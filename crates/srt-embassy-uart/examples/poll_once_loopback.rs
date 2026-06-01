@@ -8,7 +8,7 @@ use std::{
 
 use embedded_io_async::{ErrorType, Read, Write};
 use futures::executor::block_on;
-use srt_embassy_uart::UartDriver;
+use srt_embassy_uart::{UartAdapter, UartTaskError};
 
 #[derive(Clone, Default)]
 struct SharedPipe {
@@ -80,8 +80,8 @@ fn main() {
         let pipe = SharedPipe::default();
         let (uart_a, uart_b) = pipe.endpoints();
 
-        let mut a = UartDriver::new(uart_a);
-        let mut b = UartDriver::new(uart_b);
+        let mut a = UartAdapter::new(uart_a);
+        let mut b = UartAdapter::new(uart_b);
 
         a.send_message(b"hello from a")
             .expect("send_message failed");
@@ -93,15 +93,23 @@ fn main() {
         let mut got_default = false;
         let mut got_log = false;
         for now_ms in 0..200_u64 {
-            a.poll_once(now_ms, &mut rx_a)
-                .await
-                .expect("a poll_once failed");
-            b.poll_once(now_ms, &mut rx_b)
-                .await
-                .expect("b poll_once failed");
+            a.poll_once_dispatch(
+                now_ms,
+                &mut rx_a,
+                |_| panic!("a received message unexpectedly"),
+                |error| {
+                    if let UartTaskError::SendFailed(failed) = error {
+                        panic!("a send failed unexpectedly: {failed:?}");
+                    }
+                    panic!("a task error unexpectedly: {error:?}");
+                },
+            )
+            .await;
 
-            if let Some(message) = b.poll_message() {
-                match message.channel_id_u8() {
+            b.poll_once_dispatch(
+                now_ms,
+                &mut rx_b,
+                |message| match message.channel_id_u8() {
                     0 => {
                         assert_eq!(message.as_bytes(), b"hello from a");
                         got_default = true;
@@ -111,12 +119,10 @@ fn main() {
                         got_log = true;
                     }
                     other => panic!("unexpected channel: {other}"),
-                }
-            }
-
-            if let Some(failed) = a.poll_send_failed() {
-                panic!("send failed unexpectedly: {failed:?}");
-            }
+                },
+                |error| panic!("b task error unexpectedly: {error:?}"),
+            )
+            .await;
 
             if got_default && got_log {
                 println!("b received both default and log channels");

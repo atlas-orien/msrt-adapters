@@ -44,16 +44,16 @@ impl AdapterCore {
         self.engine.tick(now_ms);
     }
 
-    /// Polls one completed incoming message if available.
-    #[must_use]
-    pub fn poll_message(&mut self) -> Option<ReceivedMessage> {
-        self.events.poll_message()
-    }
-
-    /// Polls one reliable-send failure event if available.
-    #[must_use]
-    pub fn poll_send_failed(&mut self) -> Option<SendFailedEvent> {
-        self.events.poll_send_failed()
+    /// Dispatches all completed adapter events to handlers.
+    pub fn dispatch_events<MessageHandler, SendFailedHandler>(
+        &mut self,
+        handle_message: MessageHandler,
+        handle_send_failed: SendFailedHandler,
+    ) where
+        MessageHandler: FnMut(ReceivedMessage),
+        SendFailedHandler: FnMut(SendFailedEvent),
+    {
+        self.events.dispatch(handle_message, handle_send_failed);
     }
 
     /// Drains engine events, calling `write` for each wire write event.
@@ -130,11 +130,6 @@ impl AdapterCore {
         }
 
         Ok(())
-    }
-
-    /// Starts one poll step by ticking and preparing pending writes.
-    pub fn begin_poll(&mut self, now_ms: u64) {
-        self.tick(now_ms);
     }
 
     /// Completes the read part of one poll step.
