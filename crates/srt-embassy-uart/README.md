@@ -24,7 +24,7 @@ srt_uart::send_message(b"hello")?;
 srt_uart::debug(b"boot ok")?;
 ```
 
-The generated `run(now, rx_buf).await` task owns the protocol loop and should be
+The generated `run_task(now, rx_buf).await` task owns the protocol loop and should be
 started by your runtime during boot.
 
 ## Advanced Mode

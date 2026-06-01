@@ -1,7 +1,8 @@
 /// Defines a single global SRT UART API for one MCU UART link.
 ///
 /// The generated public API is intentionally small: initialize once, then use
-/// `send_message` and `debug` from application code. The generated `run` task
+/// `send_message` and `debug` from application code. The generated `run_task`
+/// owns the UART driver loop and should be spawned by the application startup.
 /// owns the UART driver loop and should be spawned by the application startup.
 #[macro_export]
 macro_rules! define_srt_uart {
@@ -41,7 +42,7 @@ macro_rules! define_srt_uart {
             })
         }
 
-        pub async fn run(mut now: impl FnMut() -> u64, rx_buf: &mut [u8])
+        pub async fn run_task(mut now: impl FnMut() -> u64, rx_buf: &mut [u8])
         where
             $uart_ty: ::embedded_io_async::Read + ::embedded_io_async::Write,
         {
@@ -62,6 +63,7 @@ macro_rules! define_srt_uart {
             }
         }
 
+        #[cfg(feature = "std")]
         #[doc(hidden)]
         pub async fn __poll_once_for_test(now_ms: u64, rx_buf: &mut [u8]) -> $crate::Result<()>
         where
