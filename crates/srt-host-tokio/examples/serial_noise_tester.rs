@@ -227,7 +227,7 @@ struct LogPrinter;
 
 impl HostEventHandler for LogPrinter {
     fn handle_message(&mut self, message: ReceivedMessage) {
-        match message.channel_id_u8() {
+        match message.channel_id() {
             LOG_CHANNEL => print_log(message),
             channel => println!(
                 "[mcu message channel={channel} #{}] {:02x?}",

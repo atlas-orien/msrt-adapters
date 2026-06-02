@@ -34,7 +34,7 @@ struct App {
 
 impl UartEventHandler for App {
     fn handle_message(&mut self, message: ReceivedMessage) {
-        match message.channel_id_u8() {
+        match message.channel_id() {
             0 => self.handle_command(message.as_bytes()),
             1 => self.handle_debug_log(message.as_bytes()),
             other => panic!("unexpected MSRT channel: {other}"),

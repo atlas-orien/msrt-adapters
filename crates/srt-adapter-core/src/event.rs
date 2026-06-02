@@ -19,15 +19,9 @@ impl ReceivedMessage {
         }
     }
 
-    /// Returns the raw channel identifier as `u16` for ergonomic matching.
-    #[must_use]
-    pub const fn channel_id(self) -> u16 {
-        self.channel_id as u16
-    }
-
     /// Returns the raw channel identifier.
     #[must_use]
-    pub const fn channel_id_u8(self) -> u8 {
+    pub const fn channel_id(self) -> u8 {
         self.channel_id
     }
 
@@ -70,15 +64,9 @@ impl SendFailedEvent {
         }
     }
 
-    /// Returns the raw channel identifier as `u16` for ergonomic matching.
-    #[must_use]
-    pub const fn channel_id(self) -> u16 {
-        self.channel_id as u16
-    }
-
     /// Returns the raw channel identifier.
     #[must_use]
-    pub const fn channel_id_u8(self) -> u8 {
+    pub const fn channel_id(self) -> u8 {
         self.channel_id
     }
 
