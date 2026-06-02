@@ -1,8 +1,8 @@
-# srt-host-tokio
+# msrt-host-tokio
 
-Tokio host adapter for SRT.
+Tokio host adapter for MSRT.
 
-This crate is the OS-side peer for `srt-embassy-uart`. It uses
+This crate is the OS-side peer for `msrt-embassy-uart`. It uses
 `tokio::io::AsyncRead + AsyncWrite` and exposes the same handler-driven adapter
 model:
 

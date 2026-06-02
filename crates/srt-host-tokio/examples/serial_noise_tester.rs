@@ -1,14 +1,13 @@
 use std::{
     collections::VecDeque,
-    env,
-    io,
+    env, io,
     pin::Pin,
     str,
     task::{Context, Poll},
     time::Instant,
 };
 
-use srt_host_tokio::{HostAdapter, HostEventHandler, HostTaskError, ReceivedMessage};
+use msrt_host_tokio::{HostAdapter, HostEventHandler, HostTaskError, ReceivedMessage};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::time::{Duration, sleep};
 use tokio_serial::{SerialPortBuilderExt, SerialStream};
@@ -101,7 +100,10 @@ impl NoisySerial {
         }
     }
 
-    fn poll_pending_write(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<usize>> {
+    fn poll_pending_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+    ) -> Poll<io::Result<usize>> {
         while self.tx_pos < self.tx_pending.len() {
             let pos = self.tx_pos;
             let chunk: Vec<u8> = self.tx_pending[pos..].to_vec();

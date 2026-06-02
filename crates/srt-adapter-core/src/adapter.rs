@@ -3,19 +3,19 @@ use crate::{
     pending_events::{PendingEventHandler, PendingEvents},
 };
 
-/// Platform-independent SRT adapter state.
+/// Platform-independent MSRT adapter state.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct AdapterCore {
-    engine: srt::Engine,
+    engine: msrt::Engine,
     pending_events: PendingEvents,
 }
 
 impl AdapterCore {
-    /// Creates adapter core with default SRT engine config.
+    /// Creates adapter core with default MSRT engine config.
     #[must_use]
     pub fn new() -> Self {
         Self {
-            engine: srt::Engine::new(srt::Config::default()),
+            engine: msrt::Engine::new(msrt::Config::default()),
             pending_events: PendingEvents::new(),
         }
     }
@@ -26,23 +26,23 @@ impl AdapterCore {
         Ok(())
     }
 
-    /// Submits one debug log message on the SRT log channel.
+    /// Submits one debug log message on the MSRT log channel.
     pub fn debug(&mut self, message: &[u8]) -> Result<()> {
         self.engine
-            .send_on(srt::ChannelId::LOG, message)
+            .send_on(msrt::ChannelId::LOG, message)
             .map_err(Error::from)?;
         Ok(())
     }
 
-    /// Feeds already-received wire bytes into SRT.
+    /// Feeds already-received wire bytes into MSRT.
     pub fn receive(&mut self, bytes: &[u8]) -> Result<()> {
-        if let srt::Receive::Error(error) = self.engine.receive(bytes) {
+        if let msrt::Receive::Error(error) = self.engine.receive(bytes) {
             return Err(Error::from(error));
         }
         Ok(())
     }
 
-    /// Advances time-driven SRT protocol work.
+    /// Advances time-driven MSRT protocol work.
     pub fn tick(&mut self, now_ms: u64) {
         self.engine.tick(now_ms);
     }
@@ -58,16 +58,16 @@ impl AdapterCore {
     /// Drains engine events, calling `write` for each wire write event.
     pub async fn drain_writes<F, Fut>(&mut self, mut write: F) -> Result<()>
     where
-        F: FnMut(srt::Write) -> Fut,
+        F: FnMut(msrt::Write) -> Fut,
         Fut: core::future::Future<Output = Result<()>>,
     {
         while let Some(event) = self.engine.poll_event() {
             match event {
-                srt::Event::Write(write_event) => write(write_event).await?,
-                srt::Event::Message(message) => self
+                msrt::Event::Write(write_event) => write(write_event).await?,
+                msrt::Event::Message(message) => self
                     .pending_events
                     .push_message(ReceivedMessage::from_srt(message))?,
-                srt::Event::SendFailed(failed) => self
+                msrt::Event::SendFailed(failed) => self
                     .pending_events
                     .push_send_failed(SendFailedEvent::from_srt(failed))?,
             }
@@ -77,14 +77,14 @@ impl AdapterCore {
     }
 
     /// Polls the next wire write event, storing non-write events internally.
-    pub fn poll_write(&mut self) -> Result<Option<srt::Write>> {
+    pub fn poll_write(&mut self) -> Result<Option<msrt::Write>> {
         while let Some(event) = self.engine.poll_event() {
             match event {
-                srt::Event::Write(write) => return Ok(Some(write)),
-                srt::Event::Message(message) => self
+                msrt::Event::Write(write) => return Ok(Some(write)),
+                msrt::Event::Message(message) => self
                     .pending_events
                     .push_message(ReceivedMessage::from_srt(message))?,
-                srt::Event::SendFailed(failed) => self
+                msrt::Event::SendFailed(failed) => self
                     .pending_events
                     .push_send_failed(SendFailedEvent::from_srt(failed))?,
             }
@@ -104,7 +104,7 @@ impl AdapterCore {
     where
         R: FnMut(&mut [u8]) -> RFut,
         RFut: core::future::Future<Output = Result<usize>>,
-        W: FnMut(srt::Write) -> WFut,
+        W: FnMut(msrt::Write) -> WFut,
         WFut: core::future::Future<Output = Result<()>>,
     {
         self.tick(now_ms);
@@ -121,7 +121,7 @@ impl AdapterCore {
 
     async fn drain_platform_writes<W, WFut>(&mut self, write: &mut W) -> Result<()>
     where
-        W: FnMut(srt::Write) -> WFut,
+        W: FnMut(msrt::Write) -> WFut,
         WFut: core::future::Future<Output = Result<()>>,
     {
         while let Some(write_event) = self.poll_write()? {

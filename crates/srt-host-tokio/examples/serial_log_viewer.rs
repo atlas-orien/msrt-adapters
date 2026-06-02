@@ -1,6 +1,6 @@
 use std::{env, str, time::Instant};
 
-use srt_host_tokio::{ErrorKind, HostAdapter, HostEventHandler, HostTaskError, ReceivedMessage};
+use msrt_host_tokio::{ErrorKind, HostAdapter, HostEventHandler, HostTaskError, ReceivedMessage};
 use tokio::time::{Duration, sleep};
 use tokio_serial::SerialPortBuilderExt;
 
@@ -34,9 +34,15 @@ impl HostEventHandler for LogPrinter {
     fn handle_error(&mut self, error: HostTaskError) {
         match error {
             HostTaskError::Adapter(error)
-                if matches!(error.kind(), ErrorKind::IoRead | ErrorKind::IoWrite | ErrorKind::IoFlush) =>
+                if matches!(
+                    error.kind(),
+                    ErrorKind::IoRead | ErrorKind::IoWrite | ErrorKind::IoFlush
+                ) =>
             {
-                eprintln!("serial link disconnected: {:?}; reconnecting ...", error.kind());
+                eprintln!(
+                    "serial link disconnected: {:?}; reconnecting ...",
+                    error.kind()
+                );
                 self.disconnected = true;
             }
             HostTaskError::Adapter(error) => {

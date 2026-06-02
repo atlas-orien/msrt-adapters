@@ -1,33 +1,33 @@
-# srt-embassy-uart
+# msrt-embassy-uart
 
-Embassy-friendly UART adapter for SRT.
+Embassy-friendly UART adapter for MSRT.
 
-This crate bridges SRT and `embedded-io-async` UART-like adapters.
+This crate bridges MSRT and `embedded-io-async` UART-like adapters.
 
 ## Simple Mode
 
 Most MCU applications use one UART link to the host. Define a UART link API once:
 
 ```rust
-mod srt_uart {
+mod msrt_uart {
     use crate::MyUart;
 
-    srt_embassy_uart::define_srt_uart!(MyUart);
+    msrt_embassy_uart::define_msrt_uart!(MyUart);
 }
 ```
 
 Application code initializes the UART and sends messages through the generated API:
 
 ```rust
-srt_uart::init(uart)?;
-srt_uart::send_message(b"hello")?;
-srt_uart::debug(b"boot ok")?;
+msrt_uart::init(uart)?;
+msrt_uart::send_message(b"hello")?;
+msrt_uart::debug(b"boot ok")?;
 ```
 
 The generated `run_task` owns the protocol loop. User code only implements a handler:
 
 ```rust
-use srt_embassy_uart::{ReceivedMessage, UartEventHandler, UartTaskError};
+use msrt_embassy_uart::{ReceivedMessage, UartEventHandler, UartTaskError};
 
 struct App;
 
@@ -43,7 +43,7 @@ impl UartEventHandler for App {
 }
 
 let mut app = App;
-srt_uart::run_task(now, &mut rx_buf, &mut app).await;
+msrt_uart::run_task(now, &mut rx_buf, &mut app).await;
 ```
 
 ## Advanced Mode
@@ -57,7 +57,7 @@ tests, or more than one UART link.
 - `poll_once_dispatch(now_ms, rx_buf, handler).await`
 
 `send_message` only submits application data to the protocol engine.
-`debug` submits data to the SRT log channel.
+`debug` submits data to the MSRT log channel.
 Reliable delivery is progressed by the background `run_task` in Simple Mode, or
 by repeated `poll_once_dispatch` calls in Advanced Mode.
 
@@ -77,7 +77,7 @@ Pending event overflow is explicitly reported via:
 ## Advanced Usage
 
 ```rust
-use srt_embassy_uart::{ReceivedMessage, Result, UartAdapter, UartEventHandler, UartTaskError};
+use msrt_embassy_uart::{ReceivedMessage, Result, UartAdapter, UartEventHandler, UartTaskError};
 
 struct App;
 
@@ -109,5 +109,5 @@ async fn run<U: embedded_io_async::Read + embedded_io_async::Write>(uart: U) -> 
 ## Run Example
 
 ```sh
-cargo run -p srt-embassy-uart --features std --example mcu_uart_link
+cargo run -p msrt-embassy-uart --features std --example mcu_uart_link
 ```

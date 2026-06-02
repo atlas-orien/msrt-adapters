@@ -1,5 +1,5 @@
 use embedded_io_async::{Read, Write};
-use srt_adapter_core::{
+use msrt_adapter_core::{
     AdapterCore, PendingEventHandler, ReceivedMessage, Result, SendFailedEvent,
 };
 
@@ -8,7 +8,7 @@ use crate::Error;
 /// Error surfaced by the managed UART adapter task.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum UartTaskError {
-    /// The adapter failed while polling the UART or SRT core.
+    /// The adapter failed while polling the UART or MSRT core.
     Adapter(Error),
     /// A reliable send reached its retry limit.
     SendFailed(SendFailedEvent),
@@ -40,7 +40,7 @@ where
     }
 }
 
-/// Adapts SRT protocol state to an async UART-like byte stream.
+/// Adapts MSRT protocol state to an async UART-like byte stream.
 #[derive(Debug)]
 pub struct UartAdapter<Uart> {
     pub(crate) uart: Uart,
@@ -48,7 +48,7 @@ pub struct UartAdapter<Uart> {
 }
 
 impl<Uart> UartAdapter<Uart> {
-    /// Creates a UART adapter with default SRT engine config.
+    /// Creates a UART adapter with default MSRT engine config.
     #[must_use]
     pub fn new(uart: Uart) -> Self {
         Self {
@@ -68,7 +68,7 @@ impl<Uart> UartAdapter<Uart> {
         self.core.send_message(message)
     }
 
-    /// Sends one debug log message on the SRT log channel.
+    /// Sends one debug log message on the MSRT log channel.
     pub fn debug(&mut self, message: &[u8]) -> Result<()> {
         self.core.debug(message)
     }

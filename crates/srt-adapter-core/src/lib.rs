@@ -1,5 +1,5 @@
 #![no_std]
-#![doc = "Shared adapter primitives for SRT platform integrations."]
+#![doc = "Shared adapter primitives for MSRT platform integrations."]
 
 mod adapter;
 mod error;

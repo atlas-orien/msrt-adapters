@@ -1,4 +1,4 @@
-use srt_adapter_core::{
+use msrt_adapter_core::{
     AdapterCore, PendingEventHandler, ReceivedMessage, Result, SendFailedEvent,
 };
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
@@ -9,7 +9,7 @@ use crate::{Error, ErrorKind};
 /// Error surfaced by the managed host adapter task.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum HostTaskError {
-    /// The adapter failed while polling the host I/O or SRT core.
+    /// The adapter failed while polling the host I/O or MSRT core.
     Adapter(Error),
     /// A reliable send reached its retry limit.
     SendFailed(SendFailedEvent),
@@ -39,7 +39,7 @@ where
     }
 }
 
-/// Adapts SRT protocol state to a Tokio async byte stream.
+/// Adapts MSRT protocol state to a Tokio async byte stream.
 #[derive(Debug)]
 pub struct HostAdapter<Io> {
     pub(crate) io: Io,

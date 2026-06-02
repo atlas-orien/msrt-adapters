@@ -11,12 +11,12 @@ use std::{
 
 use embedded_io_async::{ErrorType, Read, Write};
 use futures::executor::block_on;
-use srt_embassy_uart::{ReceivedMessage, UartEventHandler, UartTaskError};
+use msrt_embassy_uart::{ReceivedMessage, UartEventHandler, UartTaskError};
 
-mod srt_uart {
+mod msrt_uart {
     use super::MockUart;
 
-    srt_embassy_uart::define_srt_uart!(MockUart);
+    msrt_embassy_uart::define_msrt_uart!(MockUart);
 }
 
 static NOW_MS: AtomicU64 = AtomicU64::new(0);
@@ -37,14 +37,14 @@ impl UartEventHandler for App {
         match message.channel_id_u8() {
             0 => self.handle_command(message.as_bytes()),
             1 => self.handle_debug_log(message.as_bytes()),
-            other => panic!("unexpected SRT channel: {other}"),
+            other => panic!("unexpected MSRT channel: {other}"),
         }
     }
 
     fn handle_error(&mut self, error: UartTaskError) {
         match error {
-            UartTaskError::Adapter(error) => panic!("SRT UART adapter error: {:?}", error.kind()),
-            UartTaskError::SendFailed(failed) => panic!("SRT UART send failed: {failed:?}"),
+            UartTaskError::Adapter(error) => panic!("MSRT UART adapter error: {:?}", error.kind()),
+            UartTaskError::SendFailed(failed) => panic!("MSRT UART send failed: {failed:?}"),
         }
     }
 }
@@ -105,19 +105,19 @@ fn main() {
         let mut app = App::default();
         let mut rx_buf = [0u8; 128];
 
-        srt_uart::init(uart).expect("SRT UART link init failed");
-        srt_uart::send_message(b"device ready").expect("send_message failed");
-        srt_uart::debug(b"boot ok").expect("debug failed");
+        msrt_uart::init(uart).expect("MSRT UART link init failed");
+        msrt_uart::send_message(b"device ready").expect("send_message failed");
+        msrt_uart::debug(b"boot ok").expect("debug failed");
 
         // On real MCU firmware this task is spawned by Embassy and runs forever:
-        // embassy_executor::Spawner::spawn(srt_task(&mut rx_buf, &mut app)).unwrap();
+        // embassy_executor::Spawner::spawn(msrt_task(&mut rx_buf, &mut app)).unwrap();
         // We do not run it here because this example is meant to show the MCU shape
         // without requiring a concrete board executor.
-        let _ = (&mut rx_buf, srt_task);
+        let _ = (&mut rx_buf, msrt_task);
 
         app.tick();
         println!(
-            "MCU app initialized SRT UART link; ticks={}",
+            "MCU app initialized MSRT UART link; ticks={}",
             app.handled_ticks
         );
     });
@@ -128,6 +128,6 @@ fn now_ms() -> u64 {
 }
 
 #[allow(dead_code)]
-async fn srt_task(rx_buf: &mut [u8], app: &mut App) {
-    srt_uart::run_task(now_ms, rx_buf, app).await;
+async fn msrt_task(rx_buf: &mut [u8], app: &mut App) {
+    msrt_uart::run_task(now_ms, rx_buf, app).await;
 }

@@ -3,14 +3,14 @@
 pub struct ReceivedMessage {
     channel_id: u8,
     message_id: u32,
-    bytes: [u8; srt::MAX_MESSAGE_BYTES],
+    bytes: [u8; msrt::MAX_MESSAGE_BYTES],
     len: usize,
 }
 
 impl ReceivedMessage {
-    /// Creates a received message from an SRT engine event.
+    /// Creates a received message from an MSRT engine event.
     #[must_use]
-    pub const fn from_srt(message: srt::Message) -> Self {
+    pub const fn from_srt(message: msrt::Message) -> Self {
         Self {
             channel_id: message.channel_id.get(),
             message_id: message.message_id.get(),
@@ -60,9 +60,9 @@ pub struct SendFailedEvent {
 }
 
 impl SendFailedEvent {
-    /// Creates a send-failed event from an SRT engine event.
+    /// Creates a send-failed event from an MSRT engine event.
     #[must_use]
-    pub const fn from_srt(failed: srt::SendFailed) -> Self {
+    pub const fn from_srt(failed: msrt::SendFailed) -> Self {
         Self {
             channel_id: failed.channel_id.get(),
             message_id: failed.message_id.get(),

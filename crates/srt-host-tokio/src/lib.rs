@@ -3,4 +3,4 @@
 mod adapter;
 
 pub use adapter::{HostAdapter, HostEventHandler, HostTaskError};
-pub use srt_adapter_core::{Error, ErrorKind, ReceivedMessage, Result, SendFailedEvent};
+pub use msrt_adapter_core::{Error, ErrorKind, ReceivedMessage, Result, SendFailedEvent};

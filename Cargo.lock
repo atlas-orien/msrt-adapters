@@ -220,6 +220,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "msrt"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06bb32525e47442ffba9b98028b93d7f068e9fb77b5e84d33bab5e79cfffa5e"
+
+[[package]]
+name = "msrt-adapter-core"
+version = "0.1.0"
+dependencies = [
+ "embedded-io-async",
+ "msrt",
+]
+
+[[package]]
+name = "msrt-embassy-uart"
+version = "0.1.0"
+dependencies = [
+ "critical-section",
+ "embedded-io-async",
+ "futures",
+ "msrt-adapter-core",
+]
+
+[[package]]
+name = "msrt-host-tokio"
+version = "0.1.0"
+dependencies = [
+ "msrt-adapter-core",
+ "tokio",
+ "tokio-serial",
+]
+
+[[package]]
 name = "nix"
 version = "0.26.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -304,80 +337,6 @@ checksum = "3a766e1110788c36f4fa1c2b71b387a7815aa65f88ce0229841826633d93723e"
 dependencies = [
  "libc",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "srt"
-version = "0.1.0"
-dependencies = [
- "srt-core",
- "srt-engine",
- "srt-error",
- "srt-reliability",
- "srt-wire",
-]
-
-[[package]]
-name = "srt-adapter-core"
-version = "0.1.0"
-dependencies = [
- "embedded-io-async",
- "srt",
-]
-
-[[package]]
-name = "srt-core"
-version = "0.1.0"
-dependencies = [
- "srt-error",
-]
-
-[[package]]
-name = "srt-embassy-uart"
-version = "0.1.0"
-dependencies = [
- "critical-section",
- "embedded-io-async",
- "futures",
- "srt",
- "srt-adapter-core",
-]
-
-[[package]]
-name = "srt-engine"
-version = "0.1.0"
-dependencies = [
- "srt-core",
- "srt-reliability",
- "srt-wire",
-]
-
-[[package]]
-name = "srt-error"
-version = "0.1.0"
-
-[[package]]
-name = "srt-host-tokio"
-version = "0.1.0"
-dependencies = [
- "srt",
- "srt-adapter-core",
- "tokio",
- "tokio-serial",
-]
-
-[[package]]
-name = "srt-reliability"
-version = "0.1.0"
-dependencies = [
- "srt-core",
-]
-
-[[package]]
-name = "srt-wire"
-version = "0.1.0"
-dependencies = [
- "srt-core",
 ]
 
 [[package]]

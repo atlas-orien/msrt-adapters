@@ -5,6 +5,6 @@ mod adapter;
 mod link;
 
 pub use adapter::{UartAdapter, UartEventHandler, UartTaskError};
-pub use srt_adapter_core::{
+pub use msrt_adapter_core::{
     Error, ErrorKind, IoErrorKind, ReceivedMessage, Result, SendFailedEvent, SendFailedReason,
 };

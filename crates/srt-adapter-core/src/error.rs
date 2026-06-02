@@ -1,6 +1,6 @@
-use srt::{SendFailed, core::Error as SrtError};
+use msrt::{SendFailed, core::Error as SrtError};
 
-/// Broad error category for SRT adapters.
+/// Broad error category for MSRT adapters.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ErrorKind {
     /// Read operation failed.
@@ -9,9 +9,9 @@ pub enum ErrorKind {
     IoWrite,
     /// Flush operation failed.
     IoFlush,
-    /// SRT protocol operation failed.
+    /// MSRT protocol operation failed.
     Protocol,
-    /// Reliable send failed in SRT engine.
+    /// Reliable send failed in MSRT engine.
     SendFailed,
     /// Singleton API is not initialized.
     NotInitialized,
@@ -71,7 +71,7 @@ impl Error {
         self.io_error_kind
     }
 
-    /// Returns the embedded SRT protocol error if present.
+    /// Returns the embedded MSRT protocol error if present.
     #[must_use]
     pub const fn protocol_error(self) -> Option<SrtError> {
         self.protocol_error
@@ -194,5 +194,5 @@ impl From<SendFailed> for Error {
     }
 }
 
-/// Shared result type for SRT adapters.
+/// Shared result type for MSRT adapters.
 pub type Result<T> = core::result::Result<T, Error>;

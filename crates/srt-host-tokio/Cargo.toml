@@ -1,18 +1,18 @@
 [package]
-name = "srt-host-tokio"
+name = "msrt-host-tokio"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Tokio host adapter for the SRT protocol."
+description = "Tokio host adapter for the MSRT protocol."
 
 [features]
-default = []
+default = ["std"]
+std = ["msrt-adapter-core/std"]
 
 [dependencies]
-srt = { workspace = true }
-srt-adapter-core = { path = "../srt-adapter-core", version = "0.1.0" }
+msrt-adapter-core = { workspace = true }
 tokio = { version = "1", features = ["io-util", "io-std", "net", "time"] }
 
 [dev-dependencies]
