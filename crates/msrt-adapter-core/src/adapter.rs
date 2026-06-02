@@ -66,10 +66,10 @@ impl AdapterCore {
                 msrt::Event::Write(write_event) => write(write_event).await?,
                 msrt::Event::Message(message) => self
                     .pending_events
-                    .push_message(ReceivedMessage::from_srt(message))?,
+                    .push_message(ReceivedMessage::from_msrt(message))?,
                 msrt::Event::SendFailed(failed) => self
                     .pending_events
-                    .push_send_failed(SendFailedEvent::from_srt(failed))?,
+                    .push_send_failed(SendFailedEvent::from_msrt(failed))?,
             }
         }
 
@@ -83,10 +83,10 @@ impl AdapterCore {
                 msrt::Event::Write(write) => return Ok(Some(write)),
                 msrt::Event::Message(message) => self
                     .pending_events
-                    .push_message(ReceivedMessage::from_srt(message))?,
+                    .push_message(ReceivedMessage::from_msrt(message))?,
                 msrt::Event::SendFailed(failed) => self
                     .pending_events
-                    .push_send_failed(SendFailedEvent::from_srt(failed))?,
+                    .push_send_failed(SendFailedEvent::from_msrt(failed))?,
             }
         }
 

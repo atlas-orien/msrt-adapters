@@ -11,7 +11,7 @@ readme = "README.md"
 
 [workspace.dependencies]
 msrt = { version = "0.1.1", default-features = false }
-msrt-adapter-core = { path = "crates/srt-adapter-core", version = "0.1.0", default-features = false }
+msrt-adapter-core = { path = "crates/msrt-adapter-core", version = "0.1.0", default-features = false }
 embedded-io-async = { version = "0.7.0", default-features = false }
 
 [workspace.lints.rust]

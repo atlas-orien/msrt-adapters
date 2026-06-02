@@ -10,7 +10,7 @@ pub struct ReceivedMessage {
 impl ReceivedMessage {
     /// Creates a received message from an MSRT engine event.
     #[must_use]
-    pub const fn from_srt(message: msrt::Message) -> Self {
+    pub const fn from_msrt(message: msrt::Message) -> Self {
         Self {
             channel_id: message.channel_id.get(),
             message_id: message.message_id.get(),
@@ -56,7 +56,7 @@ pub struct SendFailedEvent {
 impl SendFailedEvent {
     /// Creates a send-failed event from an MSRT engine event.
     #[must_use]
-    pub const fn from_srt(failed: msrt::SendFailed) -> Self {
+    pub const fn from_msrt(failed: msrt::SendFailed) -> Self {
         Self {
             channel_id: failed.channel_id.get(),
             message_id: failed.message_id.get(),

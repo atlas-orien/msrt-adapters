@@ -1,12 +1,12 @@
-# srt-embassy-uart 架构设计（Phase 1）
+# msrt-embassy-uart 架构设计（Phase 1）
 
 ## 目标
 
-`srt-embassy-uart` 是 SRT 协议在 Embassy UART 环境下的适配层。
+`msrt-embassy-uart` 是 MSRT 协议在 Embassy UART 环境下的适配层。
 
-它不实现协议本身，也不重新设计可靠传输逻辑。真正的协议状态机仍然由 `srt::Engine` 负责。
+它不实现协议本身，也不重新设计可靠传输逻辑。真正的协议状态机仍然由 `msrt::Engine` 负责。
 
-这个 crate 的目标是把 `srt::Engine` 的底层接口组合成 MCU 更容易使用的 UART 驱动接口。
+这个 crate 的目标是把 `msrt::Engine` 的底层接口组合成 MCU 更容易使用的 UART 驱动接口。
 
 ## 核心结论
 
@@ -19,7 +19,7 @@
 - 什么时候可以释放发送状态
 - 什么时候应该上报发送失败
 
-因此 `srt-embassy-uart` 的核心不是 `send().await` 或 `receive().await`，而是一个持续推进协议状态的 `poll_once`。
+因此 `msrt-embassy-uart` 的核心不是 `send().await` 或 `receive().await`，而是一个持续推进协议状态的 `poll_once`。
 
 ## 设计原则
 
@@ -31,16 +31,16 @@ Phase 1 使用显式 `poll_once` 模型。
 - 不隐藏任务调度
 - 不强依赖 Embassy executor 的 channel / mutex / static storage 策略
 - 更容易移植到 RTIC、裸 loop、自研 scheduler 或其他 no-std runtime
-- 保持 SRT Engine 的真实执行过程可见，方便调试可靠传输
+- 保持 MSRT Engine 的真实执行过程可见，方便调试可靠传输
 
 未来可以在 `poll_once` 之上再包装 `run().await` / handle API，但 `poll_once` 应该是最底层、最稳定的能力。
 
 ## 边界
 
-`srt-embassy-uart` 负责：
+`msrt-embassy-uart` 负责：
 
 - 持有 UART 对象
-- 持有 `srt::Engine`
+- 持有 `msrt::Engine`
 - 从 UART 读取 bytes
 - 把 bytes 交给 `engine.receive`
 - 把当前时间交给 `engine.tick`
@@ -48,11 +48,11 @@ Phase 1 使用显式 `poll_once` 模型。
 - 遇到 `Event::Write` 时写回 UART
 - 遇到 `Event::Message` 时缓存完整 message
 - 遇到 `Event::SendFailed` 时缓存或返回发送失败状态
-- 把 UART 错误和 SRT 错误统一映射成 adapter error
+- 把 UART 错误和 MSRT 错误统一映射成 adapter error
 
-`srt-embassy-uart` 不负责：
+`msrt-embassy-uart` 不负责：
 
-- 定义 SRT wire format
+- 定义 MSRT wire format
 - 定义可靠传输算法
 - 分配 message id
 - 处理 packet ack/retransmit 细节
@@ -65,7 +65,7 @@ Phase 1 使用显式 `poll_once` 模型。
 `UartAdapter<Uart>` 拥有：
 
 - `uart: Uart`
-- `engine: srt::Engine`
+- `engine: msrt::Engine`
 - 接收完成的 message 缓存
 - 发送失败状态缓存
 
@@ -79,9 +79,9 @@ Phase 1 推荐的核心 API：
 
 ```rust
 impl<Uart> UartAdapter<Uart> {
-    pub const fn new(uart: Uart, engine: srt::Engine) -> Self;
+    pub const fn new(uart: Uart, engine: msrt::Engine) -> Self;
 
-    pub fn send_message(&mut self, message: &[u8]) -> Result<srt::core::MessageId>;
+    pub fn send_message(&mut self, message: &[u8]) -> Result<msrt::core::MessageId>;
 
     pub async fn poll_once(&mut self, now_ms: u64, rx_buf: &mut [u8]) -> Result<()>;
 
@@ -98,7 +98,7 @@ impl<Uart> UartAdapter<Uart> {
 
 `send_message` 不是“同步发送完成”。
 
-它只是把应用层 message 提交给 `srt::Engine`：
+它只是把应用层 message 提交给 `msrt::Engine`：
 
 ```text
 application message
@@ -164,7 +164,7 @@ loop {
 - 是否绑定 Embassy executor
 - 如何处理 backpressure
 
-这些问题不是 SRT 协议本身的问题，而是 runtime 集成问题。
+这些问题不是 MSRT 协议本身的问题，而是 runtime 集成问题。
 
 所以 Phase 1 先冻结 `poll_once` 作为最小稳定边界。
 
@@ -206,11 +206,11 @@ loop {
 - `poll_once`：推进协议
 - `poll_once_dispatch`：推进协议并分发 message/error
 
-## 和 srt::Engine 的关系
+## 和 msrt::Engine 的关系
 
-`srt::Engine` 是协议状态机。
+`msrt::Engine` 是协议状态机。
 
-`srt-embassy-uart::UartAdapter` 是 I/O adapter。
+`msrt-embassy-uart::UartAdapter` 是 I/O adapter。
 
 关系如下：
 
@@ -223,7 +223,7 @@ UartAdapter
     |
     | engine.send / engine.receive / engine.tick / engine.poll_event
     v
-srt::Engine
+msrt::Engine
     |
     | Event::Write
     v

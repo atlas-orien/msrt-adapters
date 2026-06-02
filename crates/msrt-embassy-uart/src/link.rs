@@ -6,13 +6,13 @@
 #[macro_export]
 macro_rules! define_msrt_uart {
     ($uart_ty:ty) => {
-        static SRT_ADAPTER: ::critical_section::Mutex<
+        static MSRT_ADAPTER: ::critical_section::Mutex<
             ::core::cell::RefCell<Option<$crate::UartAdapter<$uart_ty>>>,
         > = ::critical_section::Mutex::new(::core::cell::RefCell::new(None));
 
         pub fn init(uart: $uart_ty) -> $crate::Result<()> {
             ::critical_section::with(|cs| {
-                let mut slot = SRT_ADAPTER.borrow(cs).borrow_mut();
+                let mut slot = MSRT_ADAPTER.borrow(cs).borrow_mut();
                 if slot.is_some() {
                     return Err($crate::Error::new($crate::ErrorKind::AlreadyInitialized));
                 }
@@ -23,7 +23,7 @@ macro_rules! define_msrt_uart {
 
         pub fn send_message(message: &[u8]) -> $crate::Result<()> {
             ::critical_section::with(|cs| {
-                let mut slot = SRT_ADAPTER.borrow(cs).borrow_mut();
+                let mut slot = MSRT_ADAPTER.borrow(cs).borrow_mut();
                 let Some(adapter) = slot.as_mut() else {
                     return Err($crate::Error::new($crate::ErrorKind::NotInitialized));
                 };
@@ -33,7 +33,7 @@ macro_rules! define_msrt_uart {
 
         pub fn debug(message: &[u8]) -> $crate::Result<()> {
             ::critical_section::with(|cs| {
-                let mut slot = SRT_ADAPTER.borrow(cs).borrow_mut();
+                let mut slot = MSRT_ADAPTER.borrow(cs).borrow_mut();
                 let Some(adapter) = slot.as_mut() else {
                     return Err($crate::Error::new($crate::ErrorKind::NotInitialized));
                 };
@@ -51,7 +51,7 @@ macro_rules! define_msrt_uart {
         {
             loop {
                 let mut adapter = ::critical_section::with(|cs| {
-                    SRT_ADAPTER
+                    MSRT_ADAPTER
                         .borrow(cs)
                         .borrow_mut()
                         .take()
@@ -61,7 +61,7 @@ macro_rules! define_msrt_uart {
                 adapter.poll_once_dispatch(now(), rx_buf, handler).await;
 
                 ::critical_section::with(|cs| {
-                    *SRT_ADAPTER.borrow(cs).borrow_mut() = Some(adapter);
+                    *MSRT_ADAPTER.borrow(cs).borrow_mut() = Some(adapter);
                 });
             }
         }

@@ -1,4 +1,4 @@
-use msrt::{SendFailed, core::Error as SrtError};
+use msrt::{SendFailed, core::Error as MsrtError};
 
 /// Broad error category for MSRT adapters.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -43,7 +43,7 @@ pub enum IoErrorKind {
 pub struct Error {
     kind: ErrorKind,
     io_error_kind: Option<IoErrorKind>,
-    protocol_error: Option<SrtError>,
+    protocol_error: Option<MsrtError>,
     send_failed: Option<SendFailed>,
 }
 
@@ -73,7 +73,7 @@ impl Error {
 
     /// Returns the embedded MSRT protocol error if present.
     #[must_use]
-    pub const fn protocol_error(self) -> Option<SrtError> {
+    pub const fn protocol_error(self) -> Option<MsrtError> {
         self.protocol_error
     }
 
@@ -145,7 +145,7 @@ impl Error {
 
     /// Creates a protocol error.
     #[must_use]
-    pub const fn protocol(error: SrtError) -> Self {
+    pub const fn protocol(error: MsrtError) -> Self {
         Self {
             kind: ErrorKind::Protocol,
             io_error_kind: None,
@@ -182,8 +182,8 @@ impl IoErrorKind {
     }
 }
 
-impl From<SrtError> for Error {
-    fn from(value: SrtError) -> Self {
+impl From<MsrtError> for Error {
+    fn from(value: MsrtError) -> Self {
         Self::protocol(value)
     }
 }
