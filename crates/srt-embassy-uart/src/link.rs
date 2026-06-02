@@ -65,28 +65,5 @@ macro_rules! define_srt_uart {
                 });
             }
         }
-
-        #[cfg(feature = "std")]
-        #[doc(hidden)]
-        pub async fn __poll_once_for_test(now_ms: u64, rx_buf: &mut [u8]) -> $crate::Result<()>
-        where
-            $uart_ty: ::embedded_io_async::Read + ::embedded_io_async::Write,
-        {
-            let mut adapter = ::critical_section::with(|cs| {
-                SRT_ADAPTER
-                    .borrow(cs)
-                    .borrow_mut()
-                    .take()
-                    .ok_or_else(|| $crate::Error::new($crate::ErrorKind::NotInitialized))
-            })?;
-
-            let result = adapter.poll_once(now_ms, rx_buf).await;
-
-            ::critical_section::with(|cs| {
-                *SRT_ADAPTER.borrow(cs).borrow_mut() = Some(adapter);
-            });
-
-            result
-        }
     };
 }
