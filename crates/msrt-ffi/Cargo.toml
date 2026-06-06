@@ -1,19 +1,22 @@
 [package]
-name = "msrt-adapter-core"
+name = "msrt-ffi"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
-description = "Shared adapter primitives for MSRT platform integrations."
+readme = "README.md"
+description = "C ABI bindings for MSRT."
+
+[lib]
+crate-type = ["staticlib", "rlib"]
 
 [features]
 default = ["std"]
 std = ["msrt/std"]
 
 [dependencies]
-msrt = { workspace = true }
-embedded-io-async = { workspace = true }
+msrt.workspace = true
 
 [lints]
 workspace = true

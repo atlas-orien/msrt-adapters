@@ -10,15 +10,18 @@ repository = "https://github.com/atlas-orien/msrt-adapters"
 readme = "README.md"
 
 [workspace.dependencies]
-msrt = { version = "0.1.1", default-features = false }
-msrt-adapter-core = { path = "crates/msrt-adapter-core", version = "0.1.0", default-features = false }
-embedded-io-async = { version = "0.7.0", default-features = false }
+msrt = { path = "../msrt", version = "0.1.7", default-features = false }
 
 [workspace.lints.rust]
 # missing_docs = "warn"
-unsafe_code = "forbid"
 
 [workspace.lints.clippy]
 alloc_instead_of_core = "warn"
 std_instead_of_alloc = "warn"
 std_instead_of_core = "warn"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+strip = true
