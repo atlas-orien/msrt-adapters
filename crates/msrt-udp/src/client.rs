@@ -138,8 +138,22 @@ impl UdpClient {
 
     /// Runs `receive_available` followed by `poll`.
     pub fn tick(&mut self) -> Result<UdpClientEvent> {
-        let _ = self.receive_available()?;
-        self.poll()
+        if let Err(error) = self.receive_available() {
+            if let Some(kind) = recoverable_transport_error(&error) {
+                return Ok(UdpClientEvent::TransportUnavailable { kind });
+            }
+            return Err(error);
+        }
+
+        match self.poll() {
+            Ok(event) => Ok(event),
+            Err(error) => {
+                if let Some(kind) = recoverable_transport_error(&error) {
+                    return Ok(UdpClientEvent::TransportUnavailable { kind });
+                }
+                Err(error)
+            }
+        }
     }
 
     fn now_ms(&self) -> u64 {
@@ -148,5 +162,20 @@ impl UdpClient {
             .as_millis()
             .try_into()
             .unwrap_or(u64::MAX)
+    }
+}
+
+fn recoverable_transport_error(error: &crate::Error) -> Option<ErrorKind> {
+    let crate::Error::Io(error) = error else {
+        return None;
+    };
+
+    match error.kind() {
+        ErrorKind::ConnectionRefused
+        | ErrorKind::ConnectionReset
+        | ErrorKind::ConnectionAborted
+        | ErrorKind::NotConnected
+        | ErrorKind::TimedOut => Some(error.kind()),
+        _ => None,
     }
 }

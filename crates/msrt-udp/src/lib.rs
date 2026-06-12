@@ -1,4 +1,6 @@
 //! std UDP adapters for MSRT.
+#![allow(clippy::std_instead_of_core)]
+#![allow(clippy::large_enum_variant)]
 
 mod client;
 mod error;

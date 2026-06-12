@@ -1,5 +1,6 @@
 //! UDP adapter events.
 
+use std::io::ErrorKind;
 use std::net::SocketAddr;
 
 use msrt::endpoint::{MessageEvent, SendFailedEvent};
@@ -11,6 +12,14 @@ pub enum UdpClientEvent {
     Message(MessageEvent),
     /// Reliable send failed.
     SendFailed(SendFailedEvent),
+    /// The connected UDP peer is currently unreachable.
+    ///
+    /// This is a recoverable transport condition, such as a restarted server
+    /// causing ICMP port-unreachable feedback on connected UDP sockets.
+    TransportUnavailable {
+        /// Underlying socket error kind.
+        kind: ErrorKind,
+    },
     /// No action is currently pending.
     Idle,
 }

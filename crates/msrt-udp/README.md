@@ -10,6 +10,11 @@ This crate wraps MSRT endpoints around `std::net::UdpSocket`.
 The server accepts unknown peers automatically until its fixed peer table is
 full.
 
+Connected UDP sockets may surface recoverable transport feedback when a remote
+peer disappears or restarts. `UdpClient::tick` reports these conditions as
+`UdpClientEvent::TransportUnavailable` so clients can disconnect, back off, and
+start a fresh MSRT session instead of treating the condition as fatal.
+
 ## Client
 
 ```rust
@@ -26,6 +31,10 @@ loop {
             println!("{:?}", message.as_bytes());
         }
         UdpClientEvent::SendFailed(_) => client.disconnect(),
+        UdpClientEvent::TransportUnavailable { .. } => {
+            client.disconnect();
+            client.connect()?;
+        }
         UdpClientEvent::Idle => {}
     }
 }
@@ -53,3 +62,22 @@ loop {
 }
 # }
 ```
+
+## Examples
+
+Run the server:
+
+```sh
+cargo run -p msrt-udp --example server -- 127.0.0.1:9000
+```
+
+Run the frontend in another terminal:
+
+```sh
+cargo run -p msrt-udp --example frontend -- 127.0.0.1:9000
+```
+
+To test reconnect behavior, stop the server while the frontend is running. The
+frontend will report either `TransportUnavailable` from UDP socket feedback or
+`SendFailed` from MSRT retry exhaustion. Start the server again and the frontend
+will create a fresh MSRT session and continue sending.

@@ -40,6 +40,7 @@ fn drive_until_server_message(client: &mut UdpClient, server: &mut UdpServer<4>)
 
         match client.tick().unwrap() {
             UdpClientEvent::SendFailed(_) => client.disconnect(),
+            UdpClientEvent::TransportUnavailable { .. } => client.disconnect(),
             UdpClientEvent::Message(_) | UdpClientEvent::Idle => {}
         }
     }
