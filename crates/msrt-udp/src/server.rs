@@ -1,10 +1,11 @@
 //! Multi-peer UDP server adapter.
 
 use std::io::ErrorKind;
-use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
+use std::net::SocketAddr;
 use std::time::Instant;
 
 use msrt::endpoint::{EndpointPoll, EngineConfig, PeerState, ServerEndpoint};
+use tokio::net::{ToSocketAddrs, UdpSocket};
 
 use crate::error::{Error, Result};
 use crate::event::UdpServerEvent;
@@ -24,28 +25,24 @@ pub struct UdpServer<const N: usize> {
 
 impl<const N: usize> UdpServer<N> {
     /// Binds a UDP server socket using default MSRT config.
-    pub fn bind<A>(local: A) -> Result<Self>
+    pub async fn bind<A>(local: A) -> Result<Self>
     where
         A: ToSocketAddrs,
     {
-        Self::bind_with_config(local, EngineConfig::default())
+        Self::bind_with_config(local, EngineConfig::default()).await
     }
 
     /// Binds a UDP server socket using `config`.
-    pub fn bind_with_config<A>(local: A, config: EngineConfig) -> Result<Self>
+    pub async fn bind_with_config<A>(local: A, config: EngineConfig) -> Result<Self>
     where
         A: ToSocketAddrs,
     {
-        let socket = UdpSocket::bind(local)?;
-        socket.set_nonblocking(true)?;
+        let socket = UdpSocket::bind(local).await?;
         Ok(Self::from_socket(socket, config))
     }
 
     /// Creates a server from an existing UDP socket.
-    ///
-    /// The socket is switched to nonblocking mode.
     pub fn from_socket(socket: UdpSocket, config: EngineConfig) -> Self {
-        let _ = socket.set_nonblocking(true);
         Self {
             socket,
             endpoint: ServerEndpoint::new(config),
@@ -111,7 +108,7 @@ impl<const N: usize> UdpServer<N> {
     pub fn receive_available(&mut self) -> Result<usize> {
         let mut datagrams = 0;
         loop {
-            match self.socket.recv_from(&mut self.rx_buf) {
+            match self.socket.try_recv_from(&mut self.rx_buf) {
                 Ok((n, peer)) => {
                     datagrams += 1;
                     let now_ms = self.now_ms();
@@ -128,7 +125,7 @@ impl<const N: usize> UdpServer<N> {
     }
 
     /// Polls one adapter event and sends pending UDP datagrams.
-    pub fn poll(&mut self) -> Result<UdpServerEvent> {
+    pub async fn poll(&mut self) -> Result<UdpServerEvent> {
         let now_ms = self.now_ms();
         let peers: Vec<SocketAddr> = self.peers().collect();
 
@@ -141,7 +138,7 @@ impl<const N: usize> UdpServer<N> {
 
                 match poll {
                     EndpointPoll::Transmit { bytes, .. } => {
-                        let _ = self.socket.send_to(bytes, peer)?;
+                        let _ = self.socket.send_to(bytes, peer).await?;
                     }
                     EndpointPoll::Message(message) => {
                         return Ok(UdpServerEvent::Message { peer, message });
@@ -158,9 +155,9 @@ impl<const N: usize> UdpServer<N> {
     }
 
     /// Runs `receive_available` followed by `poll`.
-    pub fn tick(&mut self) -> Result<UdpServerEvent> {
+    pub async fn tick(&mut self) -> Result<UdpServerEvent> {
         let _ = self.receive_available()?;
-        self.poll()
+        self.poll().await
     }
 
     fn now_ms(&self) -> u64 {

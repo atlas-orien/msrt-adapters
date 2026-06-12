@@ -1,10 +1,11 @@
 //! Connected UDP client adapter.
 
 use std::io::ErrorKind;
-use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
+use std::net::SocketAddr;
 use std::time::Instant;
 
 use msrt::endpoint::{ClientEndpoint, EndpointPoll, EngineConfig, PeerState};
+use tokio::net::{ToSocketAddrs, UdpSocket};
 
 use crate::error::Result;
 use crate::event::UdpClientEvent;
@@ -24,31 +25,27 @@ pub struct UdpClient {
 
 impl UdpClient {
     /// Binds a local UDP socket and connects it to `remote`.
-    pub fn bind<A, R>(local: A, remote: R) -> Result<Self>
+    pub async fn bind<A, R>(local: A, remote: R) -> Result<Self>
     where
         A: ToSocketAddrs,
         R: ToSocketAddrs,
     {
-        Self::bind_with_config(local, remote, EngineConfig::default())
+        Self::bind_with_config(local, remote, EngineConfig::default()).await
     }
 
     /// Binds a local UDP socket, connects it to `remote`, and uses `config`.
-    pub fn bind_with_config<A, R>(local: A, remote: R, config: EngineConfig) -> Result<Self>
+    pub async fn bind_with_config<A, R>(local: A, remote: R, config: EngineConfig) -> Result<Self>
     where
         A: ToSocketAddrs,
         R: ToSocketAddrs,
     {
-        let socket = UdpSocket::bind(local)?;
-        socket.connect(remote)?;
-        socket.set_nonblocking(true)?;
+        let socket = UdpSocket::bind(local).await?;
+        socket.connect(remote).await?;
         Ok(Self::from_socket(socket, config))
     }
 
     /// Creates a client from an already connected UDP socket.
-    ///
-    /// The socket is switched to nonblocking mode.
     pub fn from_socket(socket: UdpSocket, config: EngineConfig) -> Self {
-        let _ = socket.set_nonblocking(true);
         Self {
             socket,
             endpoint: ClientEndpoint::new(config),
@@ -108,7 +105,7 @@ impl UdpClient {
     pub fn receive_available(&mut self) -> Result<usize> {
         let mut datagrams = 0;
         loop {
-            match self.socket.recv(&mut self.rx_buf) {
+            match self.socket.try_recv(&mut self.rx_buf) {
                 Ok(n) => {
                     datagrams += 1;
                     let now_ms = self.now_ms();
@@ -122,12 +119,12 @@ impl UdpClient {
     }
 
     /// Polls one adapter event and sends pending UDP datagrams.
-    pub fn poll(&mut self) -> Result<UdpClientEvent> {
+    pub async fn poll(&mut self) -> Result<UdpClientEvent> {
         let now_ms = self.now_ms();
         loop {
             match self.endpoint.poll(now_ms, &mut self.tx_buf)? {
                 EndpointPoll::Transmit { bytes, .. } => {
-                    let _ = self.socket.send(bytes)?;
+                    let _ = self.socket.send(bytes).await?;
                 }
                 EndpointPoll::Message(message) => return Ok(UdpClientEvent::Message(message)),
                 EndpointPoll::SendFailed(failed) => return Ok(UdpClientEvent::SendFailed(failed)),
@@ -137,7 +134,7 @@ impl UdpClient {
     }
 
     /// Runs `receive_available` followed by `poll`.
-    pub fn tick(&mut self) -> Result<UdpClientEvent> {
+    pub async fn tick(&mut self) -> Result<UdpClientEvent> {
         if let Err(error) = self.receive_available() {
             if let Some(kind) = recoverable_transport_error(&error) {
                 return Ok(UdpClientEvent::TransportUnavailable { kind });
@@ -145,7 +142,7 @@ impl UdpClient {
             return Err(error);
         }
 
-        match self.poll() {
+        match self.poll().await {
             Ok(event) => Ok(event),
             Err(error) => {
                 if let Some(kind) = recoverable_transport_error(&error) {

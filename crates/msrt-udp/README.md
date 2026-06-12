@@ -1,8 +1,8 @@
 # msrt-udp
 
-std UDP adapters for MSRT.
+Tokio UDP adapters for MSRT.
 
-This crate wraps MSRT endpoints around `std::net::UdpSocket`.
+This crate wraps MSRT endpoints around `tokio::net::UdpSocket`.
 
 - `UdpClient`: connected UDP client using `ClientEndpoint`
 - `UdpServer<N>`: fixed-capacity UDP server using `ServerEndpoint<SocketAddr, N>`
@@ -20,13 +20,13 @@ start a fresh MSRT session instead of treating the condition as fatal.
 ```rust
 use msrt_udp::{UdpClient, UdpClientEvent};
 
-# fn run() -> msrt_udp::Result<()> {
-let mut client = UdpClient::bind("127.0.0.1:0", "127.0.0.1:9000")?;
+# async fn run() -> msrt_udp::Result<()> {
+let mut client = UdpClient::bind("127.0.0.1:0", "127.0.0.1:9000").await?;
 client.connect()?;
 client.send(b"hello")?;
 
 loop {
-    match client.tick()? {
+    match client.tick().await? {
         UdpClientEvent::Message(message) => {
             println!("{:?}", message.as_bytes());
         }
@@ -46,11 +46,11 @@ loop {
 ```rust
 use msrt_udp::{UdpServer, UdpServerEvent};
 
-# fn run() -> msrt_udp::Result<()> {
-let mut server = UdpServer::<8>::bind("127.0.0.1:9000")?;
+# async fn run() -> msrt_udp::Result<()> {
+let mut server = UdpServer::<8>::bind("127.0.0.1:9000").await?;
 
 loop {
-    match server.tick()? {
+    match server.tick().await? {
         UdpServerEvent::Message { peer, message } => {
             server.send_to(peer, message.as_bytes())?;
         }

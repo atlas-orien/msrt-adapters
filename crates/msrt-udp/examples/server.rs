@@ -1,26 +1,27 @@
 #![allow(clippy::std_instead_of_core)]
 
 use std::env;
-use std::thread;
 use std::time::{Duration, Instant};
 
 use msrt_udp::{EngineConfig, UdpServer, UdpServerEvent};
+use tokio::time::sleep;
 
 const DEFAULT_BIND: &str = "127.0.0.1:9000";
 const IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 const LOOP_SLEEP: Duration = Duration::from_millis(10);
 
-fn main() -> msrt_udp::Result<()> {
+#[tokio::main]
+async fn main() -> msrt_udp::Result<()> {
     let bind = env::args()
         .nth(1)
         .unwrap_or_else(|| DEFAULT_BIND.to_string());
-    let mut server = UdpServer::<16>::bind_with_config(&bind, demo_config())?;
+    let mut server = UdpServer::<16>::bind_with_config(&bind, demo_config()).await?;
     println!("server listening on {}", server.local_addr()?);
 
     let mut next_idle_sweep = Instant::now() + Duration::from_secs(1);
 
     loop {
-        match server.tick()? {
+        match server.tick().await? {
             UdpServerEvent::Message { peer, message } if message.as_bytes() != [0] => {
                 let text = String::from_utf8_lossy(message.as_bytes());
                 println!("{peer}: {text}");
@@ -42,7 +43,7 @@ fn main() -> msrt_udp::Result<()> {
             next_idle_sweep = Instant::now() + Duration::from_secs(1);
         }
 
-        thread::sleep(LOOP_SLEEP);
+        sleep(LOOP_SLEEP).await;
     }
 }
 

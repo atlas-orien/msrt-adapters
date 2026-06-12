@@ -1,4 +1,4 @@
-//! std UDP adapters for MSRT.
+//! Tokio UDP adapters for MSRT.
 #![allow(clippy::std_instead_of_core)]
 #![allow(clippy::large_enum_variant)]
 

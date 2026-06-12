@@ -6,10 +6,11 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 readme = "README.md"
-description = "std UDP adapters for MSRT."
+description = "Tokio UDP adapters for MSRT."
 
 [dependencies]
 msrt = { workspace = true, features = ["std"] }
+tokio.workspace = true
 
 [lints]
 workspace = true

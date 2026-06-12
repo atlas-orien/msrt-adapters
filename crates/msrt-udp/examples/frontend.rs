@@ -2,21 +2,22 @@
 
 use std::env;
 use std::io::ErrorKind;
-use std::thread;
 use std::time::{Duration, Instant};
 
 use msrt_udp::{EngineConfig, UdpClient, UdpClientEvent};
+use tokio::time::sleep;
 
 const DEFAULT_SERVER: &str = "127.0.0.1:9000";
 const SEND_INTERVAL: Duration = Duration::from_secs(1);
 const LOOP_SLEEP: Duration = Duration::from_millis(10);
 
-fn main() -> msrt_udp::Result<()> {
+#[tokio::main]
+async fn main() -> msrt_udp::Result<()> {
     let server = env::args()
         .nth(1)
         .unwrap_or_else(|| DEFAULT_SERVER.to_string());
 
-    let mut client = UdpClient::bind_with_config("127.0.0.1:0", &server, demo_config())?;
+    let mut client = UdpClient::bind_with_config("127.0.0.1:0", &server, demo_config()).await?;
     println!(
         "frontend local={} remote={}",
         client.local_addr()?,
@@ -37,7 +38,7 @@ fn main() -> msrt_udp::Result<()> {
             next_send = Instant::now() + SEND_INTERVAL;
         }
 
-        match client.tick()? {
+        match client.tick().await? {
             UdpClientEvent::Message(message) if message.as_bytes() != [0] => {
                 println!("message: {}", String::from_utf8_lossy(message.as_bytes()));
             }
@@ -56,7 +57,7 @@ fn main() -> msrt_udp::Result<()> {
             }
         }
 
-        thread::sleep(LOOP_SLEEP);
+        sleep(LOOP_SLEEP).await;
     }
 }
 
