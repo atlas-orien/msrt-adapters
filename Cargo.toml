@@ -10,7 +10,7 @@ repository = "https://github.com/atlas-orien/msrt-adapters"
 readme = "README.md"
 
 [workspace.dependencies]
-msrt = { path = "../msrt", version = "0.1.7", default-features = false }
+msrt = { version = "0.1.8", default-features = false }
 tokio = { version = "1", features = ["io-util", "macros", "net", "rt-multi-thread", "time"] }
 
 [workspace.lints.rust]

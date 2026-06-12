@@ -27,7 +27,9 @@ dependencies = [
 
 [[package]]
 name = "msrt"
-version = "0.1.7"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "325475cdeec8f56379329c436ccf268dc67b6dc0a15c9e251bdbb9a8f17db0e7"
 
 [[package]]
 name = "msrt-ffi"
