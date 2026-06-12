@@ -3,8 +3,8 @@
 use msrt::endpoint::{EngineConfig, IntegrityConfig, MessageId};
 
 use crate::constants::{
-    MSRT_INTEGRITY_AEAD_DEFAULT, MSRT_INTEGRITY_AEAD_KEY, MSRT_INTEGRITY_CRC16,
-    MSRT_INTEGRITY_CRC32, MSRT_INTEGRITY_CRC64, MSRT_ROLE_CLIENT,
+    MSRT_INTEGRITY_CRC16, MSRT_INTEGRITY_CRC32, MSRT_INTEGRITY_CRC64,
+    MSRT_INTEGRITY_SIP_TAG_DEFAULT, MSRT_INTEGRITY_SIP_TAG_KEY, MSRT_ROLE_CLIENT,
 };
 
 /// C-compatible endpoint configuration.
@@ -25,7 +25,7 @@ pub struct MsrtConfig {
     pub reassembly_timeout_ms: u64,
     /// Integrity backend.
     pub integrity: u32,
-    /// Key used when `integrity` is `MSRT_INTEGRITY_AEAD_KEY`.
+    /// Key used when `integrity` is `MSRT_INTEGRITY_SIP_TAG_KEY`.
     pub aead_key: [u8; 16],
 }
 
@@ -66,8 +66,8 @@ impl MsrtConfig {
             0 | MSRT_INTEGRITY_CRC16 => IntegrityConfig::crc16(),
             MSRT_INTEGRITY_CRC32 => IntegrityConfig::crc32(),
             MSRT_INTEGRITY_CRC64 => IntegrityConfig::crc64(),
-            MSRT_INTEGRITY_AEAD_DEFAULT => IntegrityConfig::aead(),
-            MSRT_INTEGRITY_AEAD_KEY => IntegrityConfig::aead_with_key(self.aead_key),
+            MSRT_INTEGRITY_SIP_TAG_DEFAULT => IntegrityConfig::sip_tag(),
+            MSRT_INTEGRITY_SIP_TAG_KEY => IntegrityConfig::sip_tag_with_key(self.aead_key),
             _ => return Err(()),
         };
 

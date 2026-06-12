@@ -31,9 +31,13 @@ pub const MSRT_INTEGRITY_CRC16: u32 = 1;
 pub const MSRT_INTEGRITY_CRC32: u32 = 2;
 /// CRC-64/ECMA-182 integrity.
 pub const MSRT_INTEGRITY_CRC64: u32 = 3;
-/// Lightweight keyed integrity using the MSRT default key.
+/// Keyed SipTag integrity using the MSRT default key.
+pub const MSRT_INTEGRITY_SIP_TAG_DEFAULT: u32 = 4;
+/// Keyed SipTag integrity using the configured key.
+pub const MSRT_INTEGRITY_SIP_TAG_KEY: u32 = 5;
+/// Backward-compatible alias for `MSRT_INTEGRITY_SIP_TAG_DEFAULT`.
 pub const MSRT_INTEGRITY_AEAD_DEFAULT: u32 = 4;
-/// Lightweight keyed integrity using `aead_key`.
+/// Backward-compatible alias for `MSRT_INTEGRITY_SIP_TAG_KEY`.
 pub const MSRT_INTEGRITY_AEAD_KEY: u32 = 5;
 
 /// No endpoint action is pending.
