@@ -5,8 +5,9 @@ members = ["crates/*"]
 [workspace.package]
 edition = "2024"
 license = "Apache-2.0"
-authors = ["Atlas Orein <gamesworldcraft@gamil.com>"]
+authors = ["Atlas Orein <gamesworldcraft@gmail.com>"]
 repository = "https://github.com/atlas-orien/msrt-adapters"
+homepage = "https://github.com/atlas-orien/msrt-adapters"
 readme = "README.md"
 
 [workspace.dependencies]

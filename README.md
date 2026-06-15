@@ -1,37 +1,36 @@
 # msrt-adapters
 
-Platform and runtime adapters for MSRT.
+Platform and runtime adapters for [`msrt`](https://crates.io/crates/msrt).
 
-This repository is intentionally separate from the core `msrt` protocol repository. The `msrt` crate defines the no-std message transport protocol. This repository is for platform adapters, runtime adapters, and integration experiments.
-
-Current status: scaffold only. The first adapter crate is `msrt-embassy-uart`; it does not target a specific MCU board yet.
-
-## Design
-
-- keep MSRT protocol logic in `msrt`
-- keep platform integration here
-- avoid binding to a specific STM32/RP/ESP HAL in the first version
-- use `embedded-io-async` traits as the adapter boundary
+`msrt` owns the portable no-std protocol engine. This workspace provides small
+integration crates for C, std byte streams, UDP, and UART-style links.
 
 ## Crates
 
-```text
-crates/msrt-embassy-uart
-crates/msrt-host-tokio
-```
+| Crate | Purpose |
+| --- | --- |
+| `msrt-ffi` | C ABI bindings and a portable header for host or MCU builds. |
+| `msrt-std` | Blocking `std::io::Read + Write` frontend/backend adapters. |
+| `msrt-udp` | Tokio UDP client/server adapters with reconnect-friendly events. |
+| `msrt-uart` | Tokio host UART frontend plus no-std MCU backend traits. |
 
-Embassy-friendly UART adapter boundary built on `embedded-io-async`.
-Tokio host adapter boundary built on OS async I/O.
-
-## Run
+## Build
 
 ```sh
-cargo check --workspace
+cargo test --workspace
 ```
 
-## Future Work
+Build no-std UART backend code:
 
-- add a board-specific Embassy example
-- define ring-buffer ownership patterns
-- test UART read/write chunking
-- validate timing on real hardware
+```sh
+cargo build -p msrt-uart --no-default-features
+```
+
+Build the C ABI static library for a specific target:
+
+```sh
+cargo build -p msrt-ffi --release --target thumbv7em-none-eabihf --no-default-features
+```
+
+Each target needs its own build artifact. There is no universal static or
+dynamic library that works across desktop OS targets and MCU targets.

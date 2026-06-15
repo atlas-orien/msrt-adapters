@@ -5,8 +5,18 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/msrt-udp"
 readme = "README.md"
 description = "Tokio UDP adapters for MSRT."
+keywords = ["msrt", "udp", "tokio", "transport"]
+categories = ["network-programming", "asynchronous"]
+include = [
+    "Cargo.toml",
+    "README.md",
+    "src/**",
+    "examples/**",
+]
 
 [dependencies]
 msrt = { workspace = true, features = ["std"] }

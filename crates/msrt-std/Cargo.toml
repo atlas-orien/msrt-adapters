@@ -5,8 +5,17 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/msrt-std"
 readme = "README.md"
 description = "std byte-stream adapters for MSRT."
+keywords = ["msrt", "serial", "transport", "protocol"]
+categories = ["network-programming"]
+include = [
+    "Cargo.toml",
+    "README.md",
+    "src/**",
+]
 
 [dependencies]
 msrt = { workspace = true, features = ["std"] }

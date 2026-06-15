@@ -5,8 +5,19 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/msrt-ffi"
 readme = "README.md"
 description = "C ABI bindings for MSRT."
+keywords = ["msrt", "ffi", "c", "serial", "embedded"]
+categories = ["api-bindings", "embedded", "no-std"]
+include = [
+    "Cargo.toml",
+    "README.md",
+    "include/**",
+    "src/**",
+    "examples/**",
+]
 
 [lib]
 crate-type = ["staticlib", "rlib"]
